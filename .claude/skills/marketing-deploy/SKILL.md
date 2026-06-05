@@ -28,7 +28,11 @@ published Short bound to its journal entry.
      --publish-to youtube --privacy public --channel <name>
    ```
    `--tier cheap` ≈ stills + free motion; `balanced` spends `--max-cost` on AI clips for hero
-   scenes. Stage 3 aborts pre-flight if the estimate exceeds `--max-cost`.
+   scenes. `--max-cost` is the **whole-video** cap (images + clips + music): `run` reserves the
+   music bed and auto-downgrades paid music to free if it won't fit, so total spend stays ≤ cap.
+   Stage 3 aborts pre-flight if the clip estimate exceeds what's left. Cheapest "still alive"
+   recipe ≈ $0.41 (free `motion-*` + one ≤6s ltx hook + free `local` music); see
+   `docs/10-architecture/cost-model.md` for the ladder.
 3. **Link** the run to the bet (so measure can find the video):
    ```bash
    studio marketing link <entry_id> <run_id> --channel <name>

@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 
 from studio import config, manifest, paths, tiers
+from studio.providers import audio as audio_costs  # expected_music_cost for whole-video budgeting
 from studio.stages import audio as audio_stage
 from studio.stages import clips as clips_stage
 from studio.stages import metadata as metadata_stage
@@ -328,15 +329,22 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
             else:
                 console.print("[dim]skip narrate (no voice)[/]")
         elif stage == "clips":
-            # hand the clips stage whatever budget remains after images.
-            # 0.0 == guard disabled; a tiny floor keeps the guard ON (→ all kenburns).
-            cap = 0.0 if not max_cost else max(0.0001, round(max_cost - m.total_cost_usd, 4))
+            # Budget is for the WHOLE video. Reserve the music bed (if paid) so the
+            # clips stage leaves room for it. 0.0 == guard disabled; a tiny floor keeps
+            # the guard ON (→ all kenburns).
+            music_reserve = audio_costs.expected_music_cost(musicp) if with_voice else 0.0
+            cap = 0.0 if not max_cost else max(0.0001, round(max_cost - m.total_cost_usd - music_reserve, 4))
             clips(rid, strat, vmodel, ai_scenes, cap, False)
         elif stage == "stitch":
             stitch(rid, transition)
         elif stage == "audio":
             if with_voice:
-                audio(rid, sfxp, musicp, False)
+                mp_eff = musicp
+                left = None if not max_cost else round(max_cost - m.total_cost_usd, 4)
+                if left is not None and audio_costs.expected_music_cost(musicp) > left + 1e-9:
+                    mp_eff = "local"  # paid music won't fit the budget → free fallback (silence if no packs)
+                    console.print(f"[dim]music → local (only ${left} left of budget)[/]")
+                audio(rid, sfxp, mp_eff, False)
             else:
                 console.print("[dim]skip audio (no voice)[/]")
         elif stage == "voice":

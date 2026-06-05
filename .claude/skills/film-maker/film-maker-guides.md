@@ -341,9 +341,16 @@ Audio is a real stage (`studio audio`, between `stitch` and `voice`; mixed/ducke
 - **Top-level `music`** = one instrumental MOOD phrase for the whole piece, e.g.
   `"ominous taiko and shakuhachi, slow, tense, cinematic, instrumental"`. Ducked under
   narration automatically.
-- **Providers:** `fal-elevenlabs-sfx` ($0.002/s) + `fal-stable-audio` ($0.20 flat
-  music) when `FAL_KEY` is set; `freesound` (CC0, needs `FREESOUND_API_KEY`) or `local`
-  for free; `silence` for $0 drafts. Run `studio audio <id> --sfx-provider … --music-provider …`.
+- **Providers:** `fal-elevenlabs-sfx` ($0.002/s — negligible) + `fal-stable-audio` ($0.20
+  flat music) when `FAL_KEY` is set; `freesound` (CC0, needs `FREESOUND_API_KEY`) or `local`
+  (packs in `assets/audio/music/`) for **free**; `silence` for $0 drafts. Run
+  `studio audio <id> --sfx-provider … --music-provider …`.
+- **COST: music is the dominant audio cost ($0.20); sfx is ~free.** `--max-cost` is the
+  whole-video budget — `studio run` reserves the music bed and **auto-downgrades paid music
+  to free** if it won't fit. To cut the $0.20 without losing music, drop royalty-free tracks
+  (Pixabay / YouTube Audio Library / Mixkit) into `assets/audio/music/` and use
+  `--music-provider local`. Cheapest "still alive" recipe: free `motion-*` everywhere + one
+  ≤6s ltx hook + `local` music ≈ $0.41. See `docs/10-architecture/cost-model.md` for the ladder.
 - **Weather/atmosphere = the `atmosphere` field (wired) + ART + SOUND.** Set
   `scene.atmosphere` to `rain|snow|embers|blood|petals|wind|fog` → a free transparent
   particle layer composites over the clip (any animator). It's alpha-`overlay`, so the

@@ -53,6 +53,13 @@ FAL_MUSIC_COST = 0.20              # flat per generation (not per second)
 FREESOUND_CC0 = 'license:"Creative Commons 0"'  # hard filter — no attribution, sellable
 
 
+def expected_music_cost(provider: str) -> float:
+    """Predicted music-bed cost, for whole-video budgeting. Only `fal-stable-audio`
+    costs money ($0.20 flat); `local`/`freesound`/`silence` are free. SFX is per-second
+    and negligible (~$0.002/s), so it's not reserved against the budget."""
+    return FAL_MUSIC_COST if provider == "fal-stable-audio" else 0.0
+
+
 # --------------------------------------------------------------------------- SFX
 def generate_sfx(provider: str, prompt: str, seconds: float, dst: Path) -> GenResult:
     """Produce one sound effect for `prompt` (~`seconds` long) at `dst` (mp3)."""

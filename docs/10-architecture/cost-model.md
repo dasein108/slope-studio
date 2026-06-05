@@ -59,10 +59,25 @@ No AI video (Ken Burns/stock), free LLM, Pollinations, edge-tts. Verified workab
 
 ## The cost levers (high → low)
 1. **Less premium video time** — short hero clips, reuse, Extend features (Runway →40s ✅) instead of fresh gen.
-2. **Cheaper hosted model** — Kling/Hailuo/Seedance ≪ Veo/Runway/Sora per second 🔶.
-3. **Self-host open models** — Wan/LTX on RunPod at volume 🔶 (measure first ⚠️).
-4. **No AI video** — Ken Burns/stock → $0 ✅ (budget tier).
-5. **Free TTS** — edge-tts/Kokoro → $0 ✅.
+2. **Cheaper hosted model** — ltx ($0.04/s ✅ cheapest) / Hailuo / Kling ≪ Veo/Runway/Sora 🔶.
+3. **Shorter hook clip** — i2v snaps to a duration grid: ltx 10s = $0.40 → **6s = $0.24** (keep the AI scene ≤6s). ✅
+4. **Free motion instead of i2v** — `motion-*` (pan/drift/zoom/pulse) and `kenburns` give real motion at **$0**; reserve i2v for the hook (or none). ✅
+5. **Free music bed** — `fal-stable-audio` = $0.20/video; `local` (packs) / `freesound` (CC0 key) = **$0** ✅. sfx is ~$0.002/s — negligible.
+6. **Free TTS** — edge-tts/Kokoro → $0 ✅.
+7. **No AI video** — all Ken Burns/stock → $0 ✅ (free tier).
+
+### Whole-video budget (music included)
+`--max-cost` caps the **entire** video (images + clips + music). `studio run` reserves the
+music-bed cost before the clips stage and **auto-downgrades paid music to free** if it won't
+fit (`studio/cli.py` + `audio.expected_music_cost`). Cost ladder for a ~50s short (Nano Banana stills):
+
+| recipe | total |
+|--------|-------|
+| paid music + 10s ltx hook (pre-budget-fix) | ~$0.78 |
+| `--max-cost 0.70` → paid music + 6s ltx hook | **~$0.61** |
+| free music + 6s ltx hook | ~$0.41 |
+| free music + free `motion-*` only | ~$0.17 |
+| all flux-schnell stills + free motion | ~$0.04 |
 
 ## LoRA one-time cost (amortized, not per-video)
 🔶 ~$1-5 RunPod GPU time to train one FLUX character LoRA (community guides cite ~$1; treat as ballpark). Amortizes across every video using that character → ~$0 per video after.
