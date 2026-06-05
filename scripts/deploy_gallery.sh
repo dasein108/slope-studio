@@ -70,7 +70,7 @@ else
     git worktree add -q --detach "$WT"
     git -C "$WT" checkout -q --orphan "$BRANCH"
 fi
-git -C "$WT" rm -rqf . >/dev/null 2>&1 || true
+git -C "$WT" rm -rqf index.html "$OUT" >/dev/null 2>&1 || true   # only gallery files; keep articles/ images
 cp "$BUILD/index.html" "$WT/index.html"
 mkdir -p "$WT/$OUT"
 cp "$BUILD/$OUT"/*.mp4 "$WT/$OUT/"

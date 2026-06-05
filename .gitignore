@@ -66,3 +66,6 @@ articles
 
 # This repo ships a real Makefile (override global ignore)
 !Makefile
+
+# README cover (override the global *.png ignore)
+!assets/cover.png

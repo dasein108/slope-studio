@@ -1,5 +1,10 @@
 # Slope Studio
 
+![Slope Studio — automated AI short-video studio](assets/cover.png)
+
+> 📖 **Read the build story:** [**Zero to Autopilot — Part 1: I Built an AI That Runs a YouTube Channel**](https://dev.to/dasein108/zero-to-autopilot-part-1-i-built-an-ai-that-runs-a-youtube-channel-the-landscape-and-my-10-1ki6)
+> — a 7-part series building this repo from scratch: the cost collapse ($10 → $0.06/video), free ffmpeg effects, the memory layer, the explore/exploit bandit, and full autonomy.
+
 Automated short-video studio: **idea → published Short**. Faceless MVP, balanced tier, YouTube-first, plain Python CLI.
 
 Each of the 7 stages is an independent `studio` subcommand; `studio run` chains them with resume. Every paid stage has a **free fallback**, so the full pipeline runs end-to-end with **zero API keys** (degraded quality), then you swap real providers in via `--provider`.
@@ -132,6 +137,70 @@ make gallery            # uses existing clips; recompresses heavy ones; pushes g
 publishes `index.html` + `examples/out/*.mp4` to `gh-pages` via a throwaway git worktree —
 so `main` and your working tree are never touched. The demo media stays **out** of `main`
 (it's gitignored and regenerable); only the `gh-pages` deploy branch carries it.
+
+The same `gh-pages` site also hosts the article images, so the *Zero to Autopilot* posts
+publish as a single copy-paste: `make devto` (`scripts/build_devto.sh`) pushes each
+`articles/<slug>/images/` to Pages and emits `articles/<slug>/devto.md` with absolute image
+URLs — paste that into dev.to, frontmatter and images render as-is.
+
+## Full CLI reference
+
+Everything is one `studio` Typer app. `studio --help` (or `studio <cmd> --help`) lists flags.
+
+**Pipeline stages** (run a single stage, or chain them with `run`):
+
+| Command | What it does |
+|---------|--------------|
+| `studio init "<idea>" --duration N --aspect 9:16` | create a run, print its `<id>` |
+| `studio script <id>` | idea → `01_script.json` (timed scenes + narration) |
+| `studio visuals <id> [--provider …] [--force]` | scenes → `02_visuals/scene_NN.png` |
+| `studio narrate <id> [--voice …]` | per-scene TTS → `05_voice/scenes/*.mp3` + `timing.json` + `captions.srt` |
+| `studio clips <id> [--strategy …] [--model …] [--max-cost N]` | stills → `03_clips/scene_NN.mp4` (animate) |
+| `studio stitch <id> [--transition …]` | clips → `04_stitched.mp4` |
+| `studio audio <id>` | optional SFX + music bed |
+| `studio voice <id> [--captions burn]` | narration + music → `05_voice/final.mp4` |
+| `studio save <id>` | → `06_final.mp4` master + `06_final.json` |
+| `studio metadata <id>` | SEO-polish title/description/tags |
+| `studio thumbnail <id>` | generate `06_thumb.png` |
+| `studio publish <id> --target youtube --privacy public` | upload (tiktok audit-gated) |
+
+**Orchestrate & observe:**
+
+| Command | What it does |
+|---------|--------------|
+| `studio run "<idea>" --duration N --tier T --max-cost C` | chain every stage idea → published |
+| `studio estimate <id> --budget C` | preview AI-video cost per model **before** spending |
+| `studio status <id>` | render the manifest (per-stage provider, cost, done-flag) |
+| `studio yt-channel` | YouTube channel OAuth / info |
+| `studio brand <spec.json>` | generate a brand kit (banner, avatar, watermark, keywords, description) → `runs/_brand/<slug>/` |
+
+**Marketing / growth loop** (`studio marketing <cmd> --channel <name>`):
+
+| Command | What it does |
+|---------|--------------|
+| `ideate [--n 3] [--provider …]` | generate falsifiable viral bets → backlog |
+| `add` | manually add a bet to the backlog |
+| `backlog` | list planned bets (and the bandit's pick) |
+| `recall "<query>"` | episodic recall — past bets relevant to a query |
+| `strategy` | view the learned long-term strategy |
+| `budget [--per-video N \| --per-minute N]` | set the spend cap that sizes each render |
+| `bandit` | show the Thompson-sampling ranking of planned bets |
+| `link <bet-id> <run-id>` | bind a produced run → its bet (so it can be measured) |
+| `measure` | fetch stats + comments, score virality vs portfolio |
+| `learn [--provider …]` | reflect on measured bets → update strategy + seeds |
+| `journal` | print the per-channel ledger |
+| `report` | growth brief |
+| `tick` | run the **one** action the loop engine says is due (cron-friendly) |
+| `autopilot` | run the loop for a session (handles the 48–72h measurement wait) |
+
+**Make targets** (dev/ops helpers):
+
+| Target | What it does |
+|--------|--------------|
+| `make gallery` | deploy the effects gallery to GitHub Pages |
+| `make gallery-render` | re-render all effect demos, then deploy |
+| `make devto` | host article images + emit copy-paste-ready `articles/<slug>/devto.md` |
+| `make lint` | `ruff check studio/` |
 
 ## Status & roadmap
 
