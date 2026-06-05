@@ -11,6 +11,11 @@ def run_dir(run_id: str) -> Path:
     return RUNS_ROOT / run_id
 
 
+def brand_dir(slug: str) -> Path:
+    """Channel brand-kit assets (banner/profile/logo/brand.md) live here."""
+    return RUNS_ROOT / "_brand" / slug
+
+
 def script_json(d: Path) -> Path:
     return d / "01_script.json"
 
@@ -100,10 +105,6 @@ def comments_json(d: Path) -> Path:
 def sfx_dir(d: Path) -> Path:
     """Per-scene generated/sourced sound effects."""
     return d / "05b_sfx"
-
-
-def scene_sfx(d: Path, sid: int) -> Path:
-    return sfx_dir(d) / f"scene_{sid:02d}.mp3"
 
 
 def sfx_placements_json(d: Path) -> Path:

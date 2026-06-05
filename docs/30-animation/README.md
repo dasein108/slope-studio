@@ -10,7 +10,7 @@ everything synced to the narration.
 - [`transitions.md`](transitions.md) — per-scene transition vocabulary + when to use each
 - [`motion.md`](motion.md) — `motion-*` presets (pan/zoom/drift/pulse) on a still
 - [`kinetic.md`](kinetic.md) — kinetic-typography (animated headline over a background)
-- [`parallax.md`](parallax.md) — 2.5D depth (static rembg cut-out subject over a panning, blurred bg)
+- [`parallax.md`](parallax.md) — 2.5D depth: `parallax` = static sharp subject + REAL bg drift (subject inpainted out); `blurred-parallax` = older blurred-panning-planes look
 - [`slice.md`](slice.md) — diagonal-cut reveal (two halves offset, then slide together)
 - [`effects/puppet.md`](effects/puppet.md) — `puppet`: free cutout animation (drawn figure bobs/hops/shakes head; rembg over a blurred bg)
 - [`effects/talking-head.md`](effects/talking-head.md) — `talkinghead`: 2D lip-sync (static face, mouth moves with narration via Rhubarb)
@@ -50,7 +50,7 @@ everything synced to the narration.
 
 `animator` applies to **free** scenes. AI scenes (via `--strategy all/auto/hybrid`)
 use `fal-i2v` instead. Mix freely: most scenes `kenburns`/`motion-*`, a few diagram
-scenes `manim`, hero scene `fal-i2v`. See [`../10-architecture/tiers.md`](../10-architecture/tiers.md).
+scenes `manim`, hero scene `fal-i2v`. See [`../10-architecture/cost-model.md`](../10-architecture/cost-model.md).
 
 **Want more (rain, fire, fog, sunrise, water, grain, glitch, god-rays, morphs, kinetic
 type)?** The above are the **wired** animators; the [`effects/`](effects/README.md) index

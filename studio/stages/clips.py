@@ -62,9 +62,8 @@ def plan(script: Script, strategy: str, model: str,
             reverse=True,
         )
         spent = 0.0
+        # highest-priority scenes first; keep filling any scene whose clip still fits.
         for i in ranked:
-            if _effective_priority(scenes[i], i, n) <= 0 and chosen_ai:
-                pass  # still allow filling zero-priority scenes if budget remains
             c = video.estimate_cost("fal-i2v", model, scenes[i].duration_s)
             if spent + c <= budget:
                 chosen_ai.add(scenes[i].id)

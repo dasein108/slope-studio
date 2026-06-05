@@ -469,15 +469,6 @@ def post_fx(src: Path, dst: Path, name: str, seconds: float, w: int = 0, h: int 
     tmp.replace(dst)
 
 
-def concat(clips: list[Path], dst: Path) -> None:
-    """Fast concat (no transition) via the concat demuxer. Clips must be normalized."""
-    listfile = dst.with_suffix(".txt")
-    listfile.write_text("".join(f"file '{c.resolve()}'\n" for c in clips))
-    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listfile),
-          "-c", "copy", str(dst)])
-    listfile.unlink(missing_ok=True)
-
-
 def concat_xfade(clips: list[Path], durations: list[float], dst: Path,
                  transition: str = "fade", t: float = 0.4) -> None:
     """Concat with crossfade transitions between every pair (clips normalized)."""
@@ -543,20 +534,6 @@ def mux_audio(video: Path, audio: Path, dst: Path, music: Path | None = None,
           "-map", "[vo]", "-map", "[ao]", "-t", f"{target:.3f}",
           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
           "-c:a", "aac", "-b:a", "192k", "-ar", "48000", str(dst)])
-
-
-def loudnorm(src: Path, dst: Path, i: float = -14.0, tp: float = -1.5,
-             lra: float = 11.0) -> None:
-    """Loudness-normalize an audio file to a platform target (default -14 LUFS,
-    the YouTube/TikTok reference). Single-pass EBU R128; good enough for short beds.
-
-    ffmpeg can't edit in place, so write a temp then move (supports src==dst).
-    """
-    tmp = dst.with_name(dst.stem + "_ln.mp3")
-    _run(["ffmpeg", "-y", "-i", str(src),
-          "-af", f"loudnorm=I={i}:TP={tp}:LRA={lra}",
-          "-c:a", "libmp3lame", "-q:a", "2", "-ar", "48000", str(tmp)])
-    tmp.replace(dst)
 
 
 def duck_music(voice: Path, music: Path, dst: Path, music_db: float = -24.0,

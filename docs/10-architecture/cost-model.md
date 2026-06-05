@@ -68,4 +68,4 @@ No AI video (Ken Burns/stock), free LLM, Pollinations, edge-tts. Verified workab
 🔶 ~$1-5 RunPod GPU time to train one FLUX character LoRA (community guides cite ~$1; treat as ballpark). Amortizes across every video using that character → ~$0 per video after.
 
 ## Recommendation for accurate budgeting
-Instrument the manifest (`cost_usd` per stage — see [`cli-component-design.md`](cli-component-design.md)) and run **10 pilot videos per tier** to get *measured* cost-per-video. Do not ship a cost promise off the 🔶 estimates above; the video stage variance is too high and the public figures churn/were refuted.
+Instrument the manifest (`cost_usd` per stage — see `studio/manifest.py` and `studio/cli.py`) and run **10 pilot videos per tier** to get *measured* cost-per-video. Do not ship a cost promise off the 🔶 estimates above; the video stage variance is too high and the public figures churn/were refuted.

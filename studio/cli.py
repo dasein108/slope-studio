@@ -292,7 +292,8 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
     Spend is capped by --max-cost (0 disables); the clips stage trims/aborts to fit.
     """
     p = tiers.preset(tier)
-    sp = script_provider or p["script"]
+    # script falls through to the real-LLM default unless the tier pins it (free→stub).
+    sp = script_provider or p.get("script") or config.default_provider("script")
     ip = image_provider or p["image"]
     icp = cheap_image_provider or p["image_cheap"]
     vp = voice_provider or p["voice"]
@@ -399,6 +400,34 @@ def status(run_id: str) -> None:
         else:
             t.add_row(stage, "·", "-", "-", "-", "-")
     console.print(t)
+
+
+# --------------------------------------------------------------------------- brand
+@app.command()
+def brand(spec: Path, provider: str = "fal-nanobanana") -> None:
+    """Generate a channel BRAND KIT from a brand-spec JSON → runs/_brand/<slug>/.
+
+    Produces banner.png (2560x1440 + exact wordmark), profile.png (1024²),
+    logo.png + logo_512.png (transparent, watermark), and brand.md (keywords +
+    description). The art is requested TEXT-FREE and the wordmark is composited in
+    Pillow so spelling/placement are exact. ~$0.12 on fal (3 Nano Banana stills);
+    use --provider stub for a free offline wiring test (writes to the spec's slug —
+    use a throwaway slug so it doesn't overwrite a real kit).
+
+    Part of the marketing-guru family — see the `youtube-branding` skill for how to
+    author the spec (palette, emblem, banner scene) and review the output.
+    """
+    import json
+
+    from studio.marketing import brand as brand_mod
+
+    data = json.loads(spec.read_text())
+    res = brand_mod.build_brand(data, provider=provider)
+    console.print(f"[bold]brand kit[/] → {res['out']}   [dim](image spend ${res['cost_usd']})[/]")
+    for name, path in res["assets"].items():
+        console.print(f"  [green]{name}[/]  {path}")
+    console.print(f"\n[bold]keywords:[/] {res['keywords']}")
+    console.print(f"\n[bold]description:[/]\n{res['description']}")
 
 
 # ============================================================ marketing-guru loop
@@ -530,26 +559,171 @@ def m_strategy(channel: str = "", direction: str = "", winning: str = "", losing
     console.print(f"[green]strategy updated[/] — {channel or 'default'}")
 
 
+@marketing_app.command("budget")
+def m_budget(channel: str = "", per_video: Optional[float] = None,
+             per_minute: Optional[float] = None, for_duration: float = 0.0) -> None:
+    """Set / show the channel's per-video spend budget, or compute a video's --max-cost.
+
+    Set ONE of: `--per-video 0.60` (flat cap per video) or `--per-minute 0.40` (rate × video
+    length). `--for-duration 90` prints the --max-cost for a 90s video (pipe into `studio run`).
+    No args → show the current budget + example caps."""
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    if per_video is not None and per_minute is not None:
+        raise typer.BadParameter("set only one of --per-video / --per-minute")
+    if per_video is not None:
+        j.budget.mode, j.budget.amount = "per_video", round(per_video, 4)
+        mj.save(j)
+    elif per_minute is not None:
+        j.budget.mode, j.budget.amount = "per_minute", round(per_minute, 4)
+        mj.save(j)
+
+    if for_duration > 0:  # compute-and-print mode (for the deploy skill / driver)
+        cap = j.budget.cap_for(for_duration)
+        console.print(f"{cap:.4f}" if cap is not None else "[yellow](budget unset)[/]")
+        return
+
+    console.print(f"[bold]budget[/] ({channel or 'default'}): {j.budget.describe()}")
+    if j.budget.mode:
+        caps = "  ".join(f"{d}s→${j.budget.cap_for(d):.2f}" for d in (30, 60, 90, 150))
+        console.print(f"  [dim]--max-cost by length:[/] {caps}")
+    else:
+        console.print("  [dim]set with[/] studio marketing budget --per-video 0.50  "
+                      "[dim]or[/] --per-minute 0.40")
+
+
+@marketing_app.command("bandit")
+def m_bandit(channel: str = "", top: int = 12) -> None:
+    """Show what the next-bet bandit has learned (T8): each theme/tag feature's win-probability
+    (Beta posterior mean) from measured history, and how it would rank the current backlog."""
+    from studio.marketing import bandit as mbandit
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    stats = mbandit.posteriors(j.measured(), j.loop.prior_strength)
+    rows = sorted(((a / (a + b), n, a, b) for n, (a, b) in stats.items()),
+                  key=lambda r: r[0], reverse=True)[:top]
+    console.print(f"[bold]bandit[/] ({channel or 'default'}) — feature win-rates "
+                  f"[dim](prior strength {j.loop.prior_strength})[/]")
+    if not rows:
+        console.print("  [dim](no measured signal yet — picks are exploratory)[/]")
+    for mean, (dim, val), a, b in rows:
+        console.print(f"  {mean:5.2f}  [cyan]{dim}[/]={val}  [dim]α={a:.0f} β={b:.0f}[/]")
+    planned = [e for e in j.entries if e.status == "planned"]
+    if planned:
+        import random as _r
+        order = mbandit.rank(planned, j.measured(), j.loop.prior_strength,
+                             _r.Random(len(j.entries) * 1000 + len(j.measured())))
+        console.print("  [dim]backlog rank →[/] " + " > ".join(e.id for e in order[:6]))
+
+
+@marketing_app.command("tick")
+def m_tick(channel: str = "", json_out: bool = typer.Option(False, "--json")) -> None:
+    """Show the autonomous loop's NEXT due action (read-only decision; T1). The driver
+    (`autopilot` / the marketing-autopilot skill / cron) acts on this, then ticks again."""
+    from studio.marketing import journal as mj
+    from studio.marketing import loop as mloop
+
+    p = mloop.plan(mj.load(channel))
+    if json_out:
+        console.print_json(p.model_dump_json())
+        return
+    console.print(f"[bold]tick[/] ({channel or 'default'}) — phase={p.phase}")
+    console.print(f"  next: [cyan]{p.next}[/] — {p.note}")
+    if p.measure_due:
+        console.print(f"  measure_due: {', '.join(p.measure_due)}")
+    if p.next == "produce":
+        cap = "?" if p.produce_max_cost is None else f"${p.produce_max_cost:.2f}"
+        console.print(f"  → produce {p.produce_entry} (--duration {p.target_duration_s}, --max-cost {cap})")
+
+
+@marketing_app.command("autopilot")
+def m_autopilot(channel: str = "", provider: Optional[str] = None, produce: bool = False,
+                tier: str = "balanced") -> None:
+    """Run ONE tick of the autonomous loop: perform the single due action (measure | learn |
+    ideate | produce | idle), then return. Schedule it (cron / the /loop skill /
+    marketing-autopilot) to run the loop continuously — the deferred-measurement timing is
+    handled by the engine. Producing spends money + publishes, so it is GATED behind --produce.
+
+    Uses the SCRIPTED ideate/learn fallbacks; for smarter agent-driven steps use the
+    marketing-autopilot skill instead."""
+    import subprocess
+    from datetime import datetime
+
+    from studio.marketing import journal as mj
+    from studio.marketing import loop as mloop
+
+    j = mj.load(channel)
+    p = mloop.plan(j)
+    prov = provider or config.default_provider("script")
+    console.print(f"[bold]autopilot[/] ({channel or 'default'}) → [cyan]{p.next}[/]: {p.note}")
+
+    if p.next == "measure":
+        m_measure(channel=channel)
+    elif p.next == "learn":
+        m_learn(channel=channel, provider=prov)
+        j = mj.load(channel)
+        j.last_learn_at = mj._now()
+        mj.save(j)
+    elif p.next == "ideate":
+        m_ideate(channel=channel, provider=prov, n=3)
+    elif p.next == "produce":
+        e = j.get(p.produce_entry)
+        cap = p.produce_max_cost if p.produce_max_cost is not None else 3.0
+        ch = f" --channel {channel}" if channel else ""
+        if not produce:
+            console.print("[yellow]produce gated[/] — re-run with --produce, or run manually:")
+            console.print(f'  studio run "{e.idea}" --duration {p.target_duration_s} --tier {tier} '
+                          f'--max-cost {cap} --publish-to youtube --privacy public{ch}')
+            console.print(f"  then: studio marketing link {e.id} <run_id>{ch}")
+            return
+        slug = re.sub(r"[^a-z0-9]+", "-", e.idea.lower())[:24].strip("-")
+        rid = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{slug}"
+        cmd = ["studio", "run", e.idea, "--duration", str(p.target_duration_s), "--tier", tier,
+               "--max-cost", str(cap), "--publish-to", "youtube", "--privacy", "public",
+               "--run-id", rid]
+        if channel:
+            cmd += ["--channel", channel]
+        console.print(f"[dim]$ {' '.join(cmd)}[/]")
+        r = subprocess.run(cmd, text=True)
+        if r.returncode == 0:
+            m_link(entry_id=e.id, run_id=rid, channel=channel)
+        else:
+            console.print(f"[red]produce failed[/] (exit {r.returncode}) — bet {e.id} left planned")
+
+
 @marketing_app.command("link")
 def m_link(entry_id: str, run_id: str, channel: str = "") -> None:
-    """Step 2 — attach a produced run (and its YouTube id) to a journal bet."""
+    """Step 2 — attach a produced run (and its YouTube id) to a journal bet.
+
+    Also captures production telemetry (cost, duration, animators/fx/model, providers) from the
+    run manifest into the bet — so `learn` can attribute success to the effects used (T3)."""
     from studio.marketing import journal as mj
+    from studio.marketing import telemetry as mtel
     from studio.providers import analytics
 
     j = mj.load(channel)
     e = j.get(entry_id)
     if not e:
         raise typer.BadParameter(f"no entry {entry_id} in {channel or 'default'} journal")
+    rd = paths.run_dir(run_id)
     e.run_id = run_id
     e.status = "deployed"
-    pj = paths.publish_json(paths.run_dir(run_id))
+    if not e.published_at:
+        e.published_at = mj._now()       # starts the maturation clock for the autopilot (T1)
+    pj = paths.publish_json(rd)
     if pj.exists():
         import json as _json
         note = _json.loads(pj.read_text()).get("result", "")
         e.video_id = analytics.video_id_from_url(note)
         e.video_url = note.split()[0] if note else ""
+    for k, v in mtel.from_run(rd).items():       # production telemetry (best-effort)
+        setattr(e, k, v)
     mj.save(j)
-    console.print(f"[green]linked[/] {entry_id} → run {run_id}  video={e.video_id or '(none)'}")
+    cost = f"${e.cost_usd:.2f}" if e.cost_usd else "?"
+    console.print(f"[green]linked[/] {entry_id} → run {run_id}  video={e.video_id or '(none)'}  "
+                  f"cost={cost} dur={e.duration_s:.0f}s model={e.video_model or '-'}")
 
 
 @marketing_app.command("measure")

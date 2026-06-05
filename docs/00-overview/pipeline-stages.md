@@ -62,8 +62,8 @@ renders it.
   `visual_prompt`, `narration`, `on_screen_text`, `motion_hint`, `priority`, `image_role`
   (hero/bg), `animator`, `atmosphere`, `fx`, `transition`, `sfx[]`. Timing sums to N.
 - **Provider:** LLM (`openai`/`gemini`/`groq`/`openrouter`/`ollama`) or `stub` (offline split).
-- See [`../01-stage-script/`](../01-stage-script/) and
-  [`../30-animation/scenario-schema.md`](../30-animation/scenario-schema.md).
+- See [`../30-animation/scenario-schema.md`](../30-animation/scenario-schema.md) for the
+  authoritative `01_script.json` schema.
 
 ### Stage 2 — Visuals (`visuals`)
 - **In:** `01_script.json`, optional `--char-ref`.
@@ -71,7 +71,6 @@ renders it.
   scenes use `--cheap-provider`. `--parallax-plates` also writes `scene_NN_bg.png` (subject
   removed) for parallax scenes. Skips existing unless `--force`.
 - **Provider:** `fal-nanobanana` (char-ref consistency) / `fal-flux-schnell` / `card` / `stub`.
-- See [`../02-stage-visuals/`](../02-stage-visuals/).
 
 ### Stage 2.5 — Narrate (`narrate`, voice only)
 - **In:** `01_script.json` (per-scene `narration`, `voice_name`, `tone`).
@@ -79,7 +78,6 @@ renders it.
   aligned `captions.srt`. **`timing.json` is the single source of per-scene duration** for
   clips, stitch, and mux — this is what keeps the final length == narration length.
 - **Provider:** `edge` (free, sentence-level captions) / `openai-tts`.
-- See [`../05-stage-voiceover/`](../05-stage-voiceover/).
 
 ### Stage 3 — Clips (`clips`)
 - **In:** `01_script.json`, `02_visuals/scene_NN.png`, `05_voice/timing.json` (if present).
@@ -90,13 +88,13 @@ renders it.
   dispatch via `animate.render` and fall back to kenburns on error; AI via `fal-i2v` at
   `--model`. **Budget-gated** — aborts pre-flight if `all`/`hybrid` exceeds `--max-cost`.
   Run `studio estimate <id>` first.
-- See [`../03-stage-video/`](../03-stage-video/) and [`../30-animation/`](../30-animation/README.md).
+- See [`../30-animation/`](../30-animation/README.md).
 
 ### Stage 4 — Stitch (`stitch`)
 - **In:** `03_clips/*.mp4`, `05_voice/timing.json` (if present), per-scene `transition`.
 - **Out:** `04_stitched.mp4` — single video track, normalized to the aspect canvas, with
   per-scene transitions. `concat_xfade_seq` overlap-compensates so output length = Σ durations.
-  No audio. See [`../04-stage-stitch/`](../04-stage-stitch/).
+  No audio.
 
 ### Stage 5b — Audio (`audio`, voice only)
 - **In:** `01_script.json` (`scene.sfx[]`, `Script.music`), `05_voice/timing.json`.
@@ -111,13 +109,12 @@ renders it.
   `captions.srt`, `05b_sfx/placements.json`, `05c_music.mp3`.
 - **Out:** `05_voice/final.mp4` — video + narration (concatenated per-scene mp3, $0 when
   `narrate` ran) + sfx overlay + ducked music + burned caption PNGs. `mux_audio` holds the
-  tail, never truncates. See [`../05-stage-voiceover/`](../05-stage-voiceover/).
+  tail, never truncates.
 
 ### Stage 6 — Save (`save`)
 - **In:** `05_voice/final.mp4` (or `04_stitched.mp4` fallback), `01_script.json`.
 - **Out:** `06_final.mp4` (platform-correct H.264 master via `encode_master`) + `06_final.json`
   (title/description/hashtags from the script — overwritten by metadata if it runs).
-  See [`../06-stage-publish/save.md`](../06-stage-publish/save.md).
 
 ### Stage 6.5 — Metadata (`metadata`)
 - **In:** `01_script.json`.
@@ -128,8 +125,8 @@ renders it.
 ### Stage 7 — Publish (`publish`, optional)
 - **In:** `06_final.mp4`, `06_final.json`, `06_thumb.png` (optional).
 - **Out:** `07_publish.json` — upload receipt. YouTube via Data API (`videos.insert`); TikTok
-  is audit-gated (raises until the app passes review). See [`../06-stage-publish/`](../06-stage-publish/)
-  and [`../40-publishing/youtube.md`](../40-publishing/youtube.md).
+  is audit-gated (raises until the app passes review).
+  See [`../40-publishing/youtube.md`](../40-publishing/youtube.md).
 
 ## Why decomposition matters here
 
@@ -140,6 +137,5 @@ renders it.
   re-runs a paid render. `studio run --run-id <id>` skips `is_done` stages.
 - **Parallelism:** scenes are independent in stages 2–3 → fan out N image/video calls.
 
-See [`../10-architecture/cli-component-design.md`](../10-architecture/cli-component-design.md)
-for the CLI surface and [`../10-architecture/orchestration.md`](../10-architecture/orchestration.md)
-for chaining.
+See `studio --help` (and `studio/cli.py`) for the CLI surface and
+[`../10-architecture/orchestration.md`](../10-architecture/orchestration.md) for chaining.

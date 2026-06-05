@@ -2,7 +2,7 @@
 
 What each module is, its public surface, and where it sits in the pipeline. Mirrors the
 code in `studio/`; pair with [`workflows.md`](workflows.md) (diagram 10 is the dependency
-graph) and the [CLI surface](cli-component-design.md).
+graph) and the CLI surface (`studio --help` / `studio/cli.py`).
 
 > One job per module. Stages are pure functions (read artifacts → write artifacts →
 > return `GenResult`). Providers are swappable backends. Everything ffmpeg goes through

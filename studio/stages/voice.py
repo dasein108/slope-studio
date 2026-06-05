@@ -17,7 +17,7 @@ from studio.providers import tts
 from studio.providers.base import GenResult
 
 
-def run(run_dir: Path, provider: str, voice: str = "", captions: str = "burn",
+def run(run_dir: Path, provider: str, voice: str = "", captions: str = "off",
         music: Path | None = None) -> GenResult:
     script = Script.model_validate_json(paths.script_json(run_dir).read_text())
     canvas.set_from_aspect(script.aspect)

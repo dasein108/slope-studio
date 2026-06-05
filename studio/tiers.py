@@ -13,27 +13,32 @@ Tiers (cheapest → best):
 
 from __future__ import annotations
 
+# NOTE: `script` is omitted on paid tiers ON PURPOSE — it falls through to
+# config.default_provider("script") (a real LLM when a key is present, else stub).
+# Only `free` pins "stub" so it stays fully offline. The per-scene AI-vs-Ken-Burns
+# decision lives in `strategy` (+ clips.plan), not a provider key.
 TIER_PRESETS: dict[str, dict[str, str]] = {
     "free": {
-        "script": "stub", "image": "card", "image_cheap": "card", "video": "kenburns",
+        "script": "stub",  # offline tier: never call an LLM even if a key exists
+        "image": "card", "image_cheap": "card",
         "voice": "edge", "strategy": "kenburns",
         "sfx": "silence", "music": "silence",  # offline, $0
     },
     "cheap": {
         # everything on the cheap image model (~$0.006/img); no char-ref consistency.
-        "script": "stub", "image": "fal-flux-schnell", "image_cheap": "fal-flux-schnell",
-        "video": "kenburns", "voice": "edge", "strategy": "kenburns",
+        "image": "fal-flux-schnell", "image_cheap": "fal-flux-schnell",
+        "voice": "edge", "strategy": "kenburns",
         "sfx": "local", "music": "local",  # free downloaded packs; silence if empty
     },
     "balanced": {
         # hero/character scenes → Nano Banana; backgrounds/overlays → FLUX schnell.
-        "script": "stub", "image": "fal-nanobanana", "image_cheap": "fal-flux-schnell",
-        "video": "fal-i2v", "voice": "edge", "strategy": "auto",  # fill AI within --max-cost
+        "image": "fal-nanobanana", "image_cheap": "fal-flux-schnell",
+        "voice": "edge", "strategy": "auto",  # fill AI within --max-cost
         "sfx": "fal-elevenlabs-sfx", "music": "fal-stable-audio",
     },
     "premium": {
-        "script": "stub", "image": "fal-nanobanana", "image_cheap": "fal-flux-schnell",
-        "video": "fal-i2v", "voice": "openai-tts", "strategy": "all",  # AI every scene
+        "image": "fal-nanobanana", "image_cheap": "fal-flux-schnell",
+        "voice": "openai-tts", "strategy": "all",  # AI every scene
         "sfx": "fal-elevenlabs-sfx", "music": "fal-stable-audio",
     },
 }

@@ -26,14 +26,16 @@ Deep research + architecture rationale lives in [`docs/`](docs/) — start at `d
 
 The **`film-maker` skill** (`.claude/skills/film-maker/`) is the operator playbook — invoke it when asked to produce, run, debug, or observe a video. It documents every stage's commands, providers, and how to inspect artifacts.
 
-The **`marketing-guru` skill** (`.claude/skills/marketing-guru/`) is the growth half: a closed **ideate→deploy→measure→learn** loop that picks *what* to make and judges how viral it was. It's backed by a per-channel **journal** (`runs/_marketing/<channel>/journal.json`) and the `studio marketing` CLI sub-app. Deep reference: [`docs/50-marketing/`](docs/50-marketing/).
+The **`marketing-guru` skill** (`.claude/skills/marketing-guru/`) is the growth half: a closed, **self-improving ideate→deploy→measure→learn** loop that picks *what* to make and judges how viral it was. It's backed by a per-channel **journal** (`runs/_marketing/<channel>/journal.json`) and the `studio marketing` CLI sub-app. The loop is decomposed into **per-step lego-block skills** any agent can use alone — `marketing-ideate` (generate bets) · `marketing-deploy` (produce+publish+link) · `marketing-measure-learn` (score virality, then reflect into strategy) — plus **`marketing-autopilot`** (the hands-off scheduled driver, handling the 48–72h measurement-maturation wait). The umbrella **`marketing-guru`** also owns the thin read/pick/report helpers (journal state, backlog pick per the shipped bandit / 60-40 fallback, growth brief) and links the canonical memory model. The **thinking is agent-driven; the CLI commands are I/O helpers.** Deep reference + memory model: [`docs/50-marketing/`](docs/50-marketing/) (start at `README.md`, then `memory.md`, the canonical memory reference); why this shape: [`docs/20-research/self-improving-loop.md`](docs/20-research/self-improving-loop.md). Its **channel-setup lego-block** is the **`youtube-branding` skill** (`.claude/skills/youtube-branding/`) — `studio brand <spec.json>` generates a full brand kit (banner, avatar, transparent video-watermark logo, keywords, description) into `runs/_brand/<slug>/`.
 
 ## Architecture map (where code lives)
 
 ```
 studio/
   cli.py            typer app — every subcommand + `run` chainer + `status`
-                    + `marketing` sub-app (ideate|link|measure|learn|journal|report)
+                    + `marketing` sub-app: ideate|link|measure|learn|journal|report
+                      + helpers add|backlog|recall|strategy|budget|bandit
+                      + autonomous tick|autopilot
   config.py         env-key detection → default_provider(stage); free fallbacks
   models.py         Scene, Script (pydantic) + timing validation
   manifest.py       Manifest/StageRecord — project.json read/write, cost rollup
@@ -63,16 +65,30 @@ studio/
     analytics.py    YouTube stats/comments (Data API) + retention/subs (Analytics API,
                     best-effort) — reuses the publish OAuth token
   marketing/        viral growth loop (marketing-guru skill)
-    journal.py      Entry/Strategy/Journal — per-channel bet ledger (json + md)
+    journal.py      Entry/Strategy/Journal/BudgetConfig/LoopConfig — per-channel ledger (json+md)
+                    Entry holds production telemetry (cost/duration/animators/fx/model) too (T3)
     score.py        virality composite + portfolio percentile + win/loss verdict
-    ideate.py       LLM: next bet from learned strategy + web-search trend signals
+    ideate.py       LLM: next bet from learned strategy + recall + web-search trend signals
     learn.py        LLM: reflect on measured bets → update strategy + next seeds
+    memory.py       episodic recall — rank measured bets by relevance to a query (lexical)
+    telemetry.py    T3: extract cost/duration/effects/model from a run manifest → Entry
+    loop.py         T1 engine: plan(journal, now) → the one DUE action (measure|learn|
+                    ideate|produce|idle); deferred-measurement state machine
+    bandit.py       T8: warm-started Thompson sampling over theme+tags → next bet to produce
+    brand.py        channel brand kit (banner/avatar/transparent logo + keywords/
+                    description) from a spec → runs/_brand/<slug>/ (youtube-branding
+                    skill; `studio brand`). Text-free art + Pillow safe-area wordmark
 ```
 
-**Marketing / growth loop** = `ideate→deploy→measure→learn`, journal at
-`runs/_marketing/<channel>/`. Cold-start (first 10 videos) explores; then exploits.
-`film-maker` produces, `marketing-guru` decides what & judges virality. Full reference:
-[`docs/50-marketing/`](docs/50-marketing/).
+**Marketing / growth loop** = a self-improving `ideate→deploy→measure→learn` cycle, journal at
+`runs/_marketing/<channel>/`. Cold-start (first 10 videos) explores; then exploits via a
+warm-started Thompson bandit over theme+tags (T8). `film-maker` produces, `marketing-guru`
+decides what & judges virality. **Memory:** long-term `Strategy` + episodic `Entry[]` ledger +
+relevance `recall` (`memory.py`); each Entry also records its production telemetry (T3). **Budget:**
+per-video or per-minute cap (`studio marketing budget`) → sizes each render's `--max-cost` (T4).
+**Autonomous:** `studio marketing tick`/`autopilot` + the `marketing-autopilot` skill run the
+whole loop on a schedule, handling the 48–72h measurement-maturation wait (`loop.py`, T1).
+Full reference: [`docs/50-marketing/`](docs/50-marketing/) (loop `README.md` + memory `memory.md`).
 
 **Animation/transitions** are per-scene, free, context-driven — full reference in
 [`docs/30-animation/`](docs/30-animation/) (start at `README.md`; `scenario-schema.md`

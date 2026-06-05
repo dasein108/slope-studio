@@ -16,9 +16,9 @@ from studio import ffmpeg
 from studio.config import env
 from studio.providers.base import GenResult
 
-# fal i2v models with REAL pricing. `per_s` = USD per second of output; `per_video` = flat
-# per clip. Verified against fal.ai model pages on 2026-06-04 (prices churn — re-check
-# before a big run):
+# fal i2v models with REAL pricing. `per_s` = USD per second of output. All current
+# models bill per-second. Verified against fal.ai model pages on 2026-06-04 (prices
+# churn — re-check before a big run):
 #   kling v2.5 turbo pro  $0.07/s  CONFIRMED from this account's billing ($0.70 / 10s clip)
 #   ltx-2 fast            $0.04/s @1080p ($0.08 @1440p, $0.16 @2160p)
 #   seedance v1 pro       $0.30/s
@@ -55,8 +55,6 @@ def estimate_cost(provider: str, model: str, seconds: float) -> float:
     if provider == "kenburns":
         return 0.0
     spec = FAL_MODELS.get(model, FAL_MODELS["kling"])
-    if "per_video" in spec:
-        return round(spec["per_video"], 4)
     # i2v models bill per second, clamped to the model's accepted duration grid.
     return round(_clip_dur(model, seconds) * spec["per_s"], 4)
 

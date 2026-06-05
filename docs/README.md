@@ -12,14 +12,8 @@ Research + architecture docs for a full-cycle pipeline that turns a text idea in
 
 | Dir | Contents |
 |-----|----------|
-| [`00-overview/`](00-overview/) | **Operator guide (start here)**, pipeline stages end-to-end, glossary, the cheapest-accurate verdict |
-| [`01-stage-script/`](01-stage-script/) | Stage 1 — idea → scenario + scene timings + voiceover text (LLMs) |
-| [`02-stage-visuals/`](02-stage-visuals/) | Stage 2 — scene images + consistent character/avatar (image gen, LoRA) |
-| [`03-stage-video/`](03-stage-video/) | Stage 3 — image/text → video clips + talking-avatar lip-sync |
-| [`04-stage-stitch/`](04-stage-stitch/) | Stage 4 — glue clips with transitions (ffmpeg) |
-| [`05-stage-voiceover/`](05-stage-voiceover/) | Stage 5 — TTS voiceover + mux + captions |
-| [`06-stage-publish/`](06-stage-publish/) | Stage 6/7 — save to file + publish to YouTube Shorts / TikTok |
-| [`10-architecture/`](10-architecture/) | **Workflow diagrams**, **module map**, orchestration choices, CLI component design, build tiers, cost model |
+| [`00-overview/`](00-overview/) | **Operator guide (start here)**, pipeline stages end-to-end, glossary |
+| [`10-architecture/`](10-architecture/) | **Workflow diagrams**, **module map**, orchestration choices, cost model |
 | [`20-research/`](20-research/) | Verified findings, refuted claims, sources, open questions |
 | [`30-animation/`](30-animation/) | Per-scene animators + transitions + voice/tone; **`scenario-schema.md`** = authoritative `01_script.json` schema; **[`effects/`](30-animation/effects/README.md)** = full programmatic/vector effect catalog (rain, fire, fog, grain, morphs…) |
 | [`40-publishing/`](40-publishing/) | YouTube Shorts auto-publish setup (OAuth) + metadata/SEO |
@@ -39,7 +33,7 @@ See [`00-overview/pipeline-stages.md`](00-overview/pipeline-stages.md) for the f
 
 ## TL;DR verdict (cheapest accurate stack)
 
-> Full reasoning in [`10-architecture/tiers.md`](10-architecture/tiers.md) and [`00-overview/verdict.md`](00-overview/verdict.md).
+> Full reasoning in [`10-architecture/cost-model.md`](10-architecture/cost-model.md) and the tier table in the repo-root [`CLAUDE.md`](../CLAUDE.md) (free/cheap/balanced/premium).
 
 **Recommended "cheap + accurate" balanced stack (~$0.30–0.80 per 150s video):**
 - Script: **Gemini 2.5 Flash** or **GPT-4o-mini / Claude Haiku** (cents) — or free OpenRouter/Groq/Ollama.
@@ -52,7 +46,7 @@ See [`00-overview/pipeline-stages.md`](00-overview/pipeline-stages.md) for the f
 - Publish: **YouTube Data API** (works for automation); **TikTok** only `SELF_ONLY` until audit *(verified hard constraint)*.
 
 **Hard constraints to know up front** (verified):
-- TikTok auto-publish is **private-only** + **5 users/24h** until you pass a 2-4 week audit. See [`06-stage-publish/`](06-stage-publish/).
+- TikTok auto-publish is **private-only** + **5 users/24h** until you pass a 2-4 week audit. See [`40-publishing/youtube.md`](40-publishing/youtube.md).
 - A genuinely **$0 end-to-end pipeline works** — but **without true AI video gen** and without real public auto-publish. See [`20-research/findings.md`](20-research/findings.md).
 
 ## Confidence legend used throughout

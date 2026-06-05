@@ -150,7 +150,7 @@ Use it to learn the flow before spending a cent.
   before stage 3; `--max-cost` aborts/trims before spending. Cheapest real path: `cheap`
   tier (free Ken-Burns motion on real stills).
 - **TikTok auto-publish is private-only** until a 2–4 week app audit. YouTube has no such
-  gate — it's the default. (`docs/06-stage-publish/`.)
+  gate — it's the default. (`docs/40-publishing/youtube.md`.)
 - **Don't measure too early** — a video <48h old has noisy velocity; verdicts are unreliable.
 - **Secrets & raw media never go to git** — `.env`, `client_secret*.json`, `token*.json`,
   `runs/` (incl. the journal), and all media files are gitignored. Only code, docs,
@@ -164,5 +164,5 @@ Use it to learn the flow before spending a cent.
 - Produce/debug a video → **`film-maker`** skill (`.claude/skills/film-maker/SKILL.md`)
 - Grow/analyze a channel → **`marketing-guru`** skill + [`../50-marketing/`](../50-marketing/)
 - Pipeline data-flow → [`pipeline-stages.md`](pipeline-stages.md)
-- Cost/tiers → [`../10-architecture/tiers.md`](../10-architecture/tiers.md), [`../10-architecture/cost-model.md`](../10-architecture/cost-model.md)
+- Cost/tiers → [`../10-architecture/cost-model.md`](../10-architecture/cost-model.md) (tier table in the repo-root `CLAUDE.md`)
 - Publishing setup → [`../40-publishing/youtube.md`](../40-publishing/youtube.md)

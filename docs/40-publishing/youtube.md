@@ -88,6 +88,6 @@ studio run "..." --publish-to youtube --channel science
 
 ## TikTok note
 
-TikTok auto-publish is **private-only until a 2–4 week app audit** (see
-[`../06-stage-publish/README.md`](../06-stage-publish/README.md)). YouTube is the
+TikTok auto-publish is **private-only until a 2–4 week app audit** (verified in
+[`../20-research/findings.md`](../20-research/findings.md)). YouTube is the
 automation-friendly path today.

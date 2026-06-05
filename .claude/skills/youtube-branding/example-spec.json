@@ -1,0 +1,23 @@
+{
+  "name": "STARSHIP PILOT",
+  "slogan": "UNUSUAL KNOWLEDGE",
+  "slug": "starship-pilot",
+  "style": "retro-futurist cosmic explorer aesthetic, deep indigo and navy space, warm amber-gold accent light, cyan-teal highlights, cinematic, high contrast, clean modern, premium, no text, no letters, no words, no watermark",
+  "logo_prompt": "A minimalist flat vector EMBLEM: a sleek astronaut / starship pilot helmet seen front-on, a single bright star and a small ringed planet reflected in the curved visor, enclosed in a thin circular badge ring with tiny stars. Bold, simple, iconic, readable at small size, symmetrical, centered on a plain solid flat light-grey background, sticker style.",
+  "profile_prompt": "A circular channel-avatar badge: the same starship pilot helmet front-on with a star and ringed planet glowing in the visor, rich glowing indigo cosmic background filling the whole square frame, amber rim light, bold and centered, instantly readable even when tiny.",
+  "banner_prompt": "cinematic ultra-wide 16:9 composition. A lone starship pilot in silhouette inside a cockpit, seen from behind, gazing through a vast curved window at a strange luminous cosmic phenomenon - impossible glowing geometry and a swirling amber-and-cyan nebula in deep space. Wide empty darker negative space across the CENTER of the frame for a title, detail pushed to the left and right edges, atmospheric, awe, curiosity.",
+  "palette": {
+    "primary": [11, 16, 38],
+    "accent": [255, 200, 87],
+    "highlight": [69, 230, 208],
+    "text": [244, 247, 255]
+  },
+  "keywords": [
+    "starship pilot", "unusual knowledge", "unusual facts", "did you know",
+    "space facts", "science facts", "weird history", "mind blowing facts",
+    "curiosity", "educational shorts", "learn something new", "interesting facts",
+    "the universe", "obscure knowledge", "trivia", "fun facts", "explained",
+    "cosmos", "knowledge shorts", "today i learned"
+  ],
+  "description": "STARSHIP PILOT — unusual knowledge.\n\nStrap in. Every video is a short flight to the strangest, most fascinating corners of what we know — the facts that sound impossible, the history nobody taught you, the science that rewires how you see the world.\n\nUnusual knowledge, in under a minute. Subscribe and ride along.\n\nNew shorts regularly. #unusualknowledge #didyouknow #shorts"
+}

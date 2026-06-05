@@ -9,7 +9,7 @@ Authoritative reference for authoring a scenario (by hand or LLM). The pipeline
 ```jsonc
 {
   "topic": "string",            // short subject line
-  "duration_s": 150,            // TARGET length; actual follows narration ±30s
+  "duration_s": 150,            // TARGET; sets scene COUNT (≈duration/6). Final length follows narration (±a short tail)
   "aspect": "9:16",             // 9:16 vertical (default) | 16:9 landscape/classic YouTube | 1:1 | 4:5 | 4:3 | 21:9 — every stage adapts (studio/canvas.py)
   "voice": true,                // generate voiceover + captions
   "voice_name": "woman",        // narrator voice: man|woman|cartoon|narrator (voices.md)

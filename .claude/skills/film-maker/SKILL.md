@@ -30,12 +30,14 @@ free/offline path (`stub` script, `stub` images, `kenburns` video, `edge` voice)
 ## 1. The pipeline at a glance
 
 ```
-script → visuals → narrate → clips → stitch → voice → save → [publish]
-  ①         ②         ②.5      ③       ④        ⑤      ⑥        ⑦
+script → visuals → narrate → clips → stitch → audio → voice → save → [publish]
+  ①         ②         ②.5      ③       ④       ④.5      ⑤      ⑥        ⑦
 ```
 Each stage reads/writes `runs/<id>/`. The manifest `project.json` records provider,
 cost, latency, done-flag per stage. Stages are idempotent (skip if output exists;
-`--force` to redo visuals/clips).
+`--force` to redo visuals/clips). **`audio` ④.5** generates sfx + a music bed between
+stitch and voice; the voice stage mixes them in (music ducked under narration). Sound
+is a cheap, big quality lever — see guides §11.
 
 **`narrate`** (stage ②.5, runs when `voice` is on) TTS-synthesizes each scene first,
 so every clip lasts exactly as long as its narration → the final length follows the
@@ -150,10 +152,13 @@ ffprobe -v error -show_entries format=duration -of csv=p=0 runs/$RID/04_stitched
 
 ### ⑤ voice
 ```bash
-studio voice $RID --provider edge --captions burn        # or openai-tts; captions burn|soft|none
+studio voice $RID --provider edge          # captions OFF by default (YouTube auto-generates)
 #   add a music bed:  --music beds/lofi.mp3
-mpv runs/$RID/05_voice/final.mp4   # or open in QuickTime; check VO sync + captions
+#   only bake in text for muted-autoplay feeds:  --captions burn
+mpv runs/$RID/05_voice/final.mp4   # or open in QuickTime; check VO sync (+ captions if burned)
 ```
+Captions are **off by default** — `narrate` still writes `captions.srt`, so upload that as a
+YouTube sidecar instead of burning a text wall over the visuals. See guides §6.
 
 ### ⑥ save
 ```bash
@@ -204,7 +209,7 @@ studio publish $RID --target youtube --privacy unlisted --channel <name>
 > look *great*, not just be wired.
 
 Each scene in `01_script.json` controls its own look — set by the script author/LLM:
-- `animator`: `kenburns` (default) · `motion-driftright|driftleft|driftup|driftdown|zoomin|zoomout|pulse` · `kinetic` · `parallax` · `slice` · `static` · `manim`
+- `animator`: `kenburns` (default) · `motion-driftright|driftleft|driftup|driftdown|zoomin|zoomout|pulse` · `kinetic` · `parallax` · `blurred-parallax` · `slice` · `static` · `puppet` · `talkinghead` · `manim`
 - `transition` (into the scene): `cut` (default) · `fade` · `wipeleft/right/up/down` · `slide*` · `circleopen/close` · `dissolve` · `radial` · `zoomin` …
 - `transition_dur`: seconds (default 0.4) · `manim_code`: vector animation body for `animator:"manim"`
 
@@ -310,7 +315,7 @@ find runs/$RID -type f | sort      # every artifact produced
 | Symptom | Cause / fix |
 |---------|-------------|
 | `402 Payment Required` on visuals | Pollinations paywalls anonymous. Use `--image-provider stub` or `fal-nanobanana`. |
-| `No such filter: 'drawtext'` | ffmpeg without libfreetype. Stub images avoid it; caption burn uses `subtitles=` (works). |
+| `No such filter: 'drawtext'`/`subtitles` | This ffmpeg lacks libfreetype AND libass. Caption burn overlays **Pillow PNG strips** (`burn_subs`→`caption_strip`); never switch to `subtitles=`/`drawtext`. Stub/`card` images avoid drawtext too. |
 | `missing FAL_KEY` | Add it to `.env`. Or use free providers (`stub`/`kenburns`). |
 | script JSON parse error | Free LLMs sometimes break JSON. Retry, or `--script-provider stub`. |
 | clips too short / trimmed | i2v caps at 5/10s; long scenes need splitting in stage 1. |

@@ -5,7 +5,7 @@ description: >
   viral bets (idea + hook + assumption + goal + theme). The AGENT does the ideation
   (web-search current trends + recall the channel's past winners), then persists each bet
   to the backlog. One lego-block of the ideate→deploy→measure→learn growth loop. Pairs with
-  marketing-backlog (pick next) and marketing-memory (how state persists).
+  marketing-guru, which picks the next bet from the backlog and reads/writes channel state.
 ---
 
 # marketing-ideate — generate the next bet(s)
@@ -31,7 +31,7 @@ Produce N **falsifiable** bets. Each bet is `idea` · `hook` (literal 0–3s scr
    - **Cold-start (<10 deployed):** maximize DIVERSITY — vary theme, hook style, emotion to map
      what this audience rewards.
    - **Optimizing (≥10):** lean into the recalled winning patterns, but make **≥1 exploration**
-     bet into adjacent territory (the 40% — see marketing-backlog).
+     bet into adjacent territory (the 40% — see the backlog section in marketing-guru).
 5. **Persist each** (no LLM, just I/O):
    ```bash
    studio marketing add "<idea>" --hook "<hook>" --assumption "<why>" --goal "<target>" \
@@ -43,7 +43,5 @@ Produce N **falsifiable** bets. Each bet is `idea` · `hook` (literal 0–3s scr
 built-in LLM generator and writes the bets for you. Use only when you want a quick draft
 without agent reasoning.
 
-## Memory touched
-Writes `planned` entries → the **backlog**. Reads `strategy` (long-term) + episodic recall.
-Full model: **marketing-memory** skill / [`docs/50-marketing/memory.md`](../../../docs/50-marketing/memory.md).
-</content>
+Writes `planned` entries → the **backlog**; reads `strategy` (long-term) + episodic recall.
+Memory model: [`docs/50-marketing/memory.md`](../../../docs/50-marketing/memory.md).

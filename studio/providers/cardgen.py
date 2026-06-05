@@ -137,11 +137,6 @@ def split_halves(src: Path, out_a: Path, out_b: Path, axis: str = "diag",
     b.save(out_b)
 
 
-def diagonal_halves(src: Path, out_a: Path, out_b: Path, w: int = 0, h: int = 0) -> None:
-    """Back-compat shim → diagonal split. Prefer split_halves(..., axis=...)."""
-    split_halves(src, out_a, out_b, axis="diag", w=w, h=h)
-
-
 def depth_bands(src: Path, out_top: Path, out_bottom: Path,
                 w: int = 0, h: int = 0, seam: float = 0.52, feather: int = 200) -> None:
     """Split a still into two **complementary feathered depth layers** for multi-layer

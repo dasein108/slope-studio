@@ -54,6 +54,15 @@ class Entry(BaseModel):
     video_id: str = ""
     video_url: str = ""
     published_at: str = ""
+    # --- production telemetry (filled at link from the run manifest; T3) ---
+    cost_usd: float = 0.0                  # measured $ to produce this video
+    duration_s: float = 0.0               # final video length (seconds)
+    tier: str = ""                        # free | cheap | balanced | premium
+    video_model: str = ""                 # i2v model used (kling|ltx|… or kenburns)
+    animators: list[str] = Field(default_factory=list)   # distinct animators across scenes
+    effects: list[str] = Field(default_factory=list)     # distinct fx + atmosphere used
+    providers: dict[str, str] = Field(default_factory=dict)  # stage -> provider
+    n_scenes: int = 0
     # --- measurement (step 3) ---
     metrics: Metrics | None = None
     virality: float | None = None         # absolute composite score
@@ -61,6 +70,43 @@ class Entry(BaseModel):
     outcome: str = ""                     # win | loss | neutral | cold-start
     comments_sample: list[str] = Field(default_factory=list)
     learnings: str = ""                   # what this bet taught us (filled by `learn`)
+
+
+class BudgetConfig(BaseModel):
+    """Per-channel spend budget. Either a flat cap per video, or a rate per minute of video
+    (the per-video --max-cost is then rate × video-minutes)."""
+
+    mode: str = ""          # "" (unset) | per_video | per_minute
+    amount: float = 0.0     # USD per video (per_video) OR USD per minute (per_minute)
+
+    def cap_for(self, duration_s: float) -> float | None:
+        """The --max-cost for a video of this length, or None if the budget is unset."""
+        if self.mode == "per_video":
+            return round(self.amount, 4)
+        if self.mode == "per_minute":
+            return round(self.amount * max(duration_s, 1.0) / 60.0, 4)
+        return None
+
+    def describe(self) -> str:
+        if self.mode == "per_video":
+            return f"${self.amount:.2f} per video"
+        if self.mode == "per_minute":
+            return f"${self.amount:.2f} per minute of video"
+        return "(unset)"
+
+
+class LoopConfig(BaseModel):
+    """Cadence + maturation knobs for the autonomous driver (T1). The driver is a state
+    machine over TIME because a published video must mature before its metrics are meaningful."""
+
+    maturation_hours: float = 60.0          # wait this long after publish before measuring
+    min_hours_between_produces: float = 20.0  # produce cadence (≈ 1/day at 20h)
+    daily_produce_cap: int = 2              # max videos produced per rolling 24h
+    learn_every: int = 3                    # reflect after this many NEW measured bets
+    backlog_min: int = 2                    # ideate when planned bets drop below this
+    target_duration_s: int = 60             # planned length → sizes the budget cap
+    select: str = "bandit"                  # next-bet picker: bandit (T8) | fifo (first-in-queue)
+    prior_strength: float = 2.0             # bandit warm-start pseudo-count
 
 
 class Strategy(BaseModel):
@@ -77,6 +123,9 @@ class Strategy(BaseModel):
 class Journal(BaseModel):
     channel: str = ""
     bootstrap_target: int = BOOTSTRAP_TARGET
+    budget: BudgetConfig = Field(default_factory=BudgetConfig)
+    loop: LoopConfig = Field(default_factory=LoopConfig)
+    last_learn_at: str = ""                # ISO ts of the last strategy reflection
     strategy: Strategy = Field(default_factory=Strategy)
     entries: list[Entry] = Field(default_factory=list)
 
@@ -121,7 +170,7 @@ def render_md(j: Journal) -> str:
     phase = (f"COLD START ({j.deployed_count}/{j.bootstrap_target} deployed — exploring; "
              f"relative scoring unlocks at {j.bootstrap_target})"
              if j.in_cold_start else f"OPTIMIZING ({j.deployed_count} deployed)")
-    out += [f"**Phase:** {phase}", ""]
+    out += [f"**Phase:** {phase}", f"**Budget:** {j.budget.describe()}", ""]
     if s.niche:
         out.append(f"**Niche:** {s.niche}")
     if s.current_direction:
@@ -133,11 +182,13 @@ def render_md(j: Journal) -> str:
     if s.next_seeds:
         out += ["", "## Next idea seeds", *[f"- {p}" for p in s.next_seeds]]
     out += ["", "## Bets", "",
-            "| id | status | idea | hook | assumption | virality | %ile | outcome |",
-            "|----|--------|------|------|------------|----------|------|---------|"]
+            "| id | status | idea | theme | cost | dur | model | virality | %ile | outcome |",
+            "|----|--------|------|-------|------|-----|-------|----------|------|---------|"]
     for e in j.entries:
         vir = "-" if e.virality is None else f"{e.virality:.3f}"
         pct = "-" if e.percentile is None else f"{e.percentile:.0f}"
-        out.append(f"| {e.id} | {e.status} | {e.idea[:40]} | {e.hook[:30]} | "
-                   f"{e.assumption[:40]} | {vir} | {pct} | {e.outcome or '-'} |")
+        cost = "-" if not e.cost_usd else f"${e.cost_usd:.2f}"
+        dur = "-" if not e.duration_s else f"{e.duration_s:.0f}s"
+        out.append(f"| {e.id} | {e.status} | {e.idea[:40]} | {e.theme[:14]} | {cost} | {dur} | "
+                   f"{e.video_model or '-'} | {vir} | {pct} | {e.outcome or '-'} |")
     return "\n".join(out) + "\n"

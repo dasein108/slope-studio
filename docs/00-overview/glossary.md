@@ -15,4 +15,4 @@
 - **Forced alignment** — matching narration text to audio timestamps to generate accurate captions (whisper / aeneas / WhisperX).
 - **Direct Post API** — TikTok's endpoint for posting videos programmatically; audit-gated.
 - **Elo / Video Arena** — Artificial Analysis's human-preference leaderboard for video models.
-- **Tier** — one of the three reference architectures: budget / balanced / premium. See [`../10-architecture/tiers.md`](../10-architecture/tiers.md).
+- **Tier** — one of the four shipped presets: free / cheap / balanced / premium (`studio run --tier`). See [`../10-architecture/cost-model.md`](../10-architecture/cost-model.md) and the tier table in the repo-root `CLAUDE.md`.

@@ -8,18 +8,18 @@ The refutation of the Wan cost figures (R4-R6) left **no validated end-to-end co
 
 ## Q2 — Real VRAM + throughput for open video models on RunPod ⚠️
 Wan 2.1/2.2, HunyuanVideo, LTX — actual VRAM needs and clips/hour on specific RunPod GPUs. Only refuted figures existed.
-→ **Action:** benchmark Wan 2.2 on A100 80GB and RTX 4090 (clip time at 480p/720p, 5s). Decides self-host vs serverless break-even. See [`../03-stage-video/`](../03-stage-video/).
+→ **Action:** benchmark Wan 2.2 on A100 80GB and RTX 4090 (clip time at 480p/720p, 5s). Decides self-host vs serverless break-even. See [`findings.md`](findings.md).
 
 ## Q3 — Orchestration framework choice (no research coverage)
 No surviving claim addressed Claude Code skills+workflows vs LangChain vs LangGraph vs plain Python CLI.
 → **Filled by engineering judgment** in [`../10-architecture/orchestration.md`](../10-architecture/orchestration.md) (🔶 not cited): plain CLI substrate → LangGraph when state/branching needed → Claude Code as creative cockpit.
 
 ## Q4 — Current TTS + talking-avatar prices/quality
-Only edge-tts (free) was verified. ElevenLabs vs OpenAI vs Google vs Kokoro/Chatterbox/F5-TTS pricing/quality, and HeyGen/D-ID/Hedra avatar pricing, are unverified (🔶 in [`../05-stage-voiceover/`](../05-stage-voiceover/) and [`../03-stage-video/`](../03-stage-video/)).
+Only edge-tts (free) was verified. ElevenLabs vs OpenAI vs Google vs Kokoro/Chatterbox/F5-TTS pricing/quality, and HeyGen/D-ID/Hedra avatar pricing, are unverified (🔶 in [`findings.md`](findings.md)).
 → **Action:** pull current pricing pages for the 2-3 TTS + 1-2 avatar tools you actually shortlist.
 
 ## Q5 — YouTube Shorts API publish restrictions vs TikTok
-TikTok's audit gate is verified ([F7](findings.md#f7--tiktok-auto-publish-is-audit-gated-the-hardest-constraint--high)). Whether YouTube Data API imposes comparable auto-publish friction (OAuth verification for public-at-scale, quota) is only 🔶 in [`../06-stage-publish/`](../06-stage-publish/).
+TikTok's audit gate is verified ([F7](findings.md#f7--tiktok-auto-publish-is-audit-gated-the-hardest-constraint--high)). Whether YouTube Data API imposes comparable auto-publish friction (OAuth verification for public-at-scale, quota) is only 🔶 in [`findings.md`](findings.md).
 → **Action:** confirm current `videos.insert` quota cost (~1600 units), daily quota, and OAuth verification requirements for public unattended uploads.
 
 ## Q6 — Video model leaderboard is already stale
@@ -38,7 +38,10 @@ From the [`self-improving-loop.md`](self-improving-loop.md) research. A focused 
 (2026-06-05, 24/25 confirmed)** resolved the substance of Q8/Q10 and most of Q9; residual gaps
 are marked below. Full findings: F-SI6…F-SI11 in [`self-improving-loop.md`](self-improving-loop.md).
 
-## Q8 — Explore/exploit algorithm ✅ RESOLVED (F-SI6/F-SI7/F-SI8)
+## Q8 — Explore/exploit algorithm ✅ RESOLVED + IMPLEMENTED (F-SI6/F-SI7/F-SI8 → T8)
+**Built:** `studio/marketing/bandit.py` — warm-started Thompson sampling over theme+tags,
+wired into `loop.py` (the autopilot's produce pick), `studio marketing bandit` to inspect.
+
 **Answer:** **drop the fixed 60/40** — it's a wasteful fixed-rate ε≈0.6 policy that over-explores
 weak arms. Use a **contextual bandit** (LinUCB / Thompson Sampling) with theme/effect features as
 context (12.5% lift over context-free; bigger when data is scarce). **Cold-start:** warm-start
