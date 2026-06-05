@@ -15,7 +15,7 @@ No surviving claim addressed Claude Code skills+workflows vs LangChain vs LangGr
 → **Filled by engineering judgment** in [`../10-architecture/orchestration.md`](../10-architecture/orchestration.md) (🔶 not cited): plain CLI substrate → LangGraph when state/branching needed → Claude Code as creative cockpit.
 
 ## Q4 — Current TTS + talking-avatar prices/quality
-Only edge-tts (free) was verified. ElevenLabs vs OpenAI vs Google vs Kokoro/Chatterbox/F5-TTS pricing/quality, and HeyGen/D-ID/Hedra avatar pricing, are unverified (🔶 in [`findings.md`](findings.md)).
+Only edge-tts (free) was verified. ElevenLabs vs OpenAI vs Google vs Kokoro/Chatterbox/F5-TTS pricing/quality, and HeyGen/D-ID/Hedra avatar pricing, are unverified — full comparison tables in [`provider-options.md`](provider-options.md).
 → **Action:** pull current pricing pages for the 2-3 TTS + 1-2 avatar tools you actually shortlist.
 
 ## Q5 — YouTube Shorts API publish restrictions vs TikTok

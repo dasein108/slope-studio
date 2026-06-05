@@ -14,7 +14,7 @@ Research + architecture docs for a full-cycle pipeline that turns a text idea in
 |-----|----------|
 | [`00-overview/`](00-overview/) | **Operator guide (start here)**, pipeline stages end-to-end, glossary |
 | [`10-architecture/`](10-architecture/) | **Workflow diagrams**, **module map**, orchestration choices, cost model |
-| [`20-research/`](20-research/) | Verified findings, refuted claims, sources, open questions |
+| [`20-research/`](20-research/) | Verified findings, refuted claims, sources, open questions, provider-option comparisons (TTS/avatar) |
 | [`30-animation/`](30-animation/) | Per-scene animators + transitions + voice/tone; **`scenario-schema.md`** = authoritative `01_script.json` schema; **[`effects/`](30-animation/effects/README.md)** = full programmatic/vector effect catalog (rain, fire, fog, grain, morphs…) |
 | [`40-publishing/`](40-publishing/) | YouTube Shorts auto-publish setup (OAuth) + metadata/SEO |
 | [`50-marketing/`](50-marketing/) | The viral growth loop — ideate→deploy→measure→learn journal (`marketing-guru` skill) |

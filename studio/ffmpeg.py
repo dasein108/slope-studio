@@ -536,6 +536,22 @@ def mux_audio(video: Path, audio: Path, dst: Path, music: Path | None = None,
           "-c:a", "aac", "-b:a", "192k", "-ar", "48000", str(dst)])
 
 
+def loudnorm(src: Path, dst: Path, i: float = -14.0, tp: float = -1.5,
+             lra: float = 11.0) -> None:
+    """Loudness-normalize an audio file to a platform target (default -14 LUFS,
+    the YouTube/TikTok reference). Single-pass EBU R128; good for an independent
+    music bed or sfx track before mixing. (mux_audio/duck_music also normalize the
+    final mix inline — use this only when mastering a track on its own.)
+
+    ffmpeg can't edit in place, so write a temp then move (supports src==dst).
+    """
+    tmp = dst.with_name(dst.stem + "_ln.mp3")
+    _run(["ffmpeg", "-y", "-i", str(src),
+          "-af", f"loudnorm=I={i}:TP={tp}:LRA={lra}",
+          "-c:a", "libmp3lame", "-q:a", "2", "-ar", "48000", str(tmp)])
+    tmp.replace(dst)
+
+
 def duck_music(voice: Path, music: Path, dst: Path, music_db: float = -24.0,
                threshold: float = 0.03, ratio: float = 12.0, attack: float = 10.0,
                release: float = 300.0, i: float = -14.0, tp: float = -1.5,

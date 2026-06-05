@@ -140,3 +140,24 @@ def comments(video_id: str, channel: str = "", limit: int = 100) -> list[dict]:
     return out
 
 
+def recent_uploads(channel: str = "", n: int = 25) -> list[dict]:
+    """Most recent uploads for the bound channel: [{video_id, title, published_at}].
+
+    Useful for reconciling the journal against what's actually live (finding untracked
+    or duplicate uploads, re-binding a video_id that changed on re-upload).
+    """
+    yt = _yt(channel)
+    ch = yt.channels().list(part="contentDetails", mine=True).execute().get("items", [])
+    if not ch:
+        return []
+    uploads = ch[0]["contentDetails"]["relatedPlaylists"]["uploads"]
+    items = yt.playlistItems().list(
+        part="contentDetails,snippet", playlistId=uploads, maxResults=min(50, n),
+    ).execute().get("items", [])
+    return [{
+        "video_id": it["contentDetails"]["videoId"],
+        "title": it["snippet"]["title"],
+        "published_at": it["contentDetails"].get("videoPublishedAt", ""),
+    } for it in items[:n]]
+
+
