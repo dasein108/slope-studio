@@ -8,6 +8,10 @@ Each of the 7 stages is an independent `studio` subcommand; `studio run` chains 
 [operator guide](docs/00-overview/operator-guide.md) — every skill + feature, and the
 exact human steps, in one page.
 
+**🎬 Effects gallery (live):** [**dasein108.github.io/slope-studio**](https://dasein108.github.io/slope-studio/) —
+every free animator, atmosphere overlay, FX look, and transition, playing in one page.
+All motion is generated from a single still in ffmpeg, at **$0** per effect.
+
 Full research + architecture: see [`docs/`](docs/) (start at [`docs/README.md`](docs/README.md)).
 
 ## Install
@@ -105,6 +109,29 @@ First **10 videos are exploration** (no baseline yet); after that the loop ranks
 vs losers and exploits. Stats/comments use the readonly scope publishing already grants;
 retention is best-effort (one optional re-auth). Full guide:
 [`docs/50-marketing/`](docs/50-marketing/) + the `marketing-guru` skill.
+
+## Effects gallery (build & deploy)
+
+The [live gallery](https://dasein108.github.io/slope-studio/) is a single static page
+(`index.html`) auto-built from the rendered demo clips in `examples/out/`, served from the
+`gh-pages` branch. To regenerate after changing or adding an effect:
+
+```bash
+# 1. (re)render the demo clips into examples/out/  (gitignored)
+python examples/make_examples.py                 # all effects
+python examples/make_examples.py <effect> --frames   # just one
+
+# 2. rebuild index.html + deploy to GitHub Pages
+make gallery            # uses existing clips; recompresses heavy ones; pushes gh-pages
+#   make gallery-render  # re-render ALL effects first, then deploy (slow)
+#   make gallery-open    # open the live site
+```
+
+`make gallery` runs `scripts/deploy_gallery.sh`: it rebuilds `index.html`
+(`examples/build_index.py`), recompresses any clip > 4 MB to web-friendly 720p H.264, and
+publishes `index.html` + `examples/out/*.mp4` to `gh-pages` via a throwaway git worktree —
+so `main` and your working tree are never touched. The demo media stays **out** of `main`
+(it's gitignored and regenerable); only the `gh-pages` deploy branch carries it.
 
 ## Status & roadmap
 

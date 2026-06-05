@@ -59,3 +59,10 @@ brand/
 *.vtt
 *.ass
 articles
+
+# Gallery deploy scratch (scripts/deploy_gallery.sh)
+.ghp-build/
+.ghp-wt/
+
+# This repo ships a real Makefile (override global ignore)
+!Makefile
