@@ -1,0 +1,59 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# --- Secrets ---
+.env
+client_secret*.json
+token*.json
+
+# --- Instructions (override global ~/.gitignore_global) ---
+!CLAUDE.md
+
+# --- Editors / OS ---
+.idea/
+.vscode/
+.DS_Store
+
+# --- Pipeline output / raw materials (never in git) ---
+runs/
+
+# Generated effects gallery (built by examples/build_index.py from gitignored clips)
+/index.html
+examples/out/
+raw/*
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.ico
+
+# Audio
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.ogg
+*.flac
+
+# Video
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.avi
+
+# Captions / subtitles
+*.srt
+*.vtt
+*.ass
