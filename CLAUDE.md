@@ -17,7 +17,7 @@ Deep research + architecture rationale lives in [`docs/`](docs/) — start at `d
 | 2.5 | Narrate | `studio narrate` | per-scene TTS → `05_voice/scenes/*.mp3` + `timing.json` + aligned `captions.srt` (runs when `voice` on; drives clip lengths) |
 | 3 | Clips | `studio clips` | images → `03_clips/scene_NN.mp4` (animator or i2v) |
 | 4 | Stitch | `studio stitch` | clips → `04_stitched.mp4` (transitions, no audio) |
-| 5 | Voice | `studio voice` | narration → `05_voice/final.mp4` (TTS + captions muxed) |
+| 5 | Voice | `studio voice` | narration → `05_voice/final.mp4` (TTS muxed; captions **off** by default — `--captions burn` to bake in) |
 | 6 | Save | `studio save` | → `06_final.mp4` (platform master) + `06_final.json` meta |
 | 6.5 | Metadata | `studio metadata` | SEO-polish title/description/tags → `06_final.json` (LLM, fallback to script). Auto-runs before publish. |
 | 7 | Publish | `studio publish` | master → YouTube (TikTok audit-gated). Setup: [`docs/40-publishing/youtube.md`](docs/40-publishing/youtube.md) |
@@ -151,6 +151,7 @@ Chosen by which keys are present in `.env`, else free fallback:
 - **Costs are PER-SECOND for AI video** — a 150s kling video ≈ $10.50 no matter how clips are split. Real fal prices live in `video.FAL_MODELS` (verified 2026-06-04; kling $0.07/s CONFIRMED from billing; ltx ~$0.04/s @1080p; seedance ~$0.30/s; hailuo ~$0.045/s; wan ~$0.16/s — wan/hailuo are PER-SECOND, not flat: a wan 6s clip ≈ $0.80). Nano Banana stills = $0.039/img (verified). Always run `studio estimate <id>` before stage 3; `studio run` defaults to `--max-cost 3` and the clips stage **aborts pre-flight** if the estimate exceeds it. Cheapest real options for a tight budget: `kenburns` (free, pan/zoom on stills) or hybrid `--ai-scenes`.
 - Don't hardcode secrets; read via `config.env()`. `.env`, `runs/`, `token.json`, `client_secret*.json` are gitignored.
 - Commit only when the user asks.
+- **All per-video build scripts live in `builds/`** (e.g. `builds/build_before_the_law.py`, `builds/build_first_sorrow.py`). These are one-off generators that author a `runs/<id>/01_script.json` by hand — they are NOT part of the `studio` package and shouldn't sit at repo root. Keeping them in `builds/` keeps the root clean, makes the back-catalog of authored videos discoverable in one place, and separates throwaway authoring scripts from the reusable pipeline code. Run them from repo root so their relative `runs/<id>/` output paths resolve (`python builds/build_first_sorrow.py`).
 
 ## Known gotchas (learned, still true)
 
@@ -166,7 +167,7 @@ Chosen by which keys are present in `.env`, else free fallback:
 - **`parallax`/`manim` need optional extras** (`.[parallax]`, `.[manim]`); both fall back to `kenburns` (recorded in the manifest note) if missing/failing — pipeline never breaks. `slice` needs no extra.
 - **`parallax` = static sharp subject + REAL background drifting** — the subject is **inpainted out** of the background (`animate._inpaint_subject`, free blur-diffusion, no OpenCV) so the drifting plane has **no ghost twin**. Direction from `motion_hint` (`right`/`left`/`up`/`down`). Best over smooth scenery. **`blurred-parallax`** = the old soft look (blurred panning planes, `gblur` hides the ghost) — for busy backgrounds. See `docs/30-animation/parallax.md`.
 - **`manim_code` must be authored flush-left** (or consistently indented); `animate._manim` dedents+reindents, but mixed indentation breaks it. Make vector effects **literal** (real path/silhouette/flash), not abstract lines. See `docs/30-animation/manim.md`.
-- **Captions are tight-fit + placed at `H-h-220`** so long sentence cues never clip off-frame and clear the platform action bar (`cardgen.caption_strip` shrinks on width AND height). See `docs/30-animation/captions.md`.
+- **Captions are OFF by default** — YouTube/TikTok auto-generate them and a burned wall of text covers the visuals. `narrate` still writes `captions.srt` (upload as a sidecar). Opt in with `--captions burn`. When burned, `cardgen.caption_strip` is **fill-width wrapped (fewest lines) + font-shrunk to a ~22%-of-H budget + hard height-capped**, overlaid at `H-h-(~0.115*H)`, so the block can NEVER clip top or bottom in any aspect. (Past bug: long 150-char sentence cues rendered at near-full font across 7 lines and overflowed.) See `docs/30-animation/captions.md`.
 - **fal/Nano-Banana blocks overt violence/gore** (bound prisoner, severed head, blood) → returns no media → that scene stubs (1-color 10 KB PNG). Imply violence symbolically; let narration carry it. Rewrite flagged prompts and re-`--force` visuals.
 - **The quality playbook is `.claude/skills/film-maker/film-maker-guides.md`** — read it (and operator preferences) before authoring scenes for a video that must look great.
 - TikTok auto-publish is **private-only until a 2–4 week app audit** (verified) — `publish.py` tiktok raises with that explanation by design.

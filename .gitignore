@@ -27,7 +27,8 @@ runs/
 # Generated effects gallery (built by examples/build_index.py from gitignored clips)
 /index.html
 examples/out/
-raw/*
+raw/
+brand/
 # Images
 *.png
 *.jpg

@@ -219,4 +219,3 @@ winning/losing patterns + new `current_direction` + `next_seeds` + per-entry lea
 updates `j.strategy` in place. Heuristic fallback (top/bottom quartile) without an LLM.
 
 Loop reference: [`../50-marketing/`](../50-marketing/README.md). Diagram: [`workflows.md` §7](workflows.md).
-</content>

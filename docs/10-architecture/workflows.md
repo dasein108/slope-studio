@@ -355,5 +355,4 @@ flowchart TD
 ```
 
 Per-module detail: [`module-map.md`](module-map.md).
-</content>
 </invoke>

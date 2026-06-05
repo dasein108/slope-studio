@@ -244,21 +244,26 @@ motion** (a raised katana on `motion-driftup`; an ominous blood-streaked afterma
 
 ---
 
-## 6. Captions — never clipped (FIXED)
+## 6. Captions — OFF by default, and clip-proof when on
 
-**Finding:** long sentence-level cues (edge-tts emits sentence boundaries) were
-clipped off the bottom of the frame.
+**Default: captions are OFF.** YouTube/TikTok auto-generate captions from the audio,
+and a burned wall of text covers the visuals. Most videos should ship without burned
+text. The `narrate` stage still writes `captions.srt` — upload that sidecar to YouTube
+for accurate subs without baking pixels.
 
-**Fix in place:**
-- `cardgen.caption_strip` now emits a **tight-fit** transparent PNG and shrinks the
-  font on **both width AND height** (down to 30px) so the whole wrapped block fits.
-- `ffmpeg.burn_subs` overlays at `H-h-220` — lower third, **clear of the TikTok/
-  Shorts action bar** (~bottom 200px), and since the strip is tight, the full block
-  is always on-frame.
+**Turn them on only when you want text baked in** (e.g. muted-autoplay feeds):
+`studio voice <id> --captions burn` or `studio run … --captions burn`.
 
-**Still want shorter captions?** Keep narration sentences punchy (≤ ~16 words).
-4-line cues fit but sit low; 2–3 lines look best. Tune `max_h` / margin in
-`cardgen.caption_strip` / `ffmpeg.burn_subs` if a platform's safe-area differs.
+**When burned, they can't clip** (two past bugs, both fixed):
+- `cardgen.caption_strip` uses **fill-width wrap** (chars/line from measured glyph
+  width → fewest lines) + font shrink (56→22px) to a **~22%-of-H budget**, then
+  **hard-caps** the PNG height at that budget. A 152-char cue → ~5 tidy lines, not 7.
+- `ffmpeg.burn_subs` overlays at `H-h-(~0.115*H)` — lower third, clear of the action
+  bar. Tight strip + margin ⇒ always on-frame, top and bottom, any aspect.
+
+**Still want captions?** Keep narration sentences punchy (≤ ~16 words) so cues stay
+2–3 lines. Tune `max_h` (`0.22*H`) / margin (`0.115*H`) in `cardgen.caption_strip` /
+`ffmpeg.burn_subs` if a platform's safe-area differs.
 
 ---
 

@@ -48,40 +48,52 @@ def _gradient(w: int, h: int, top: tuple, bottom: tuple) -> Image.Image:
 
 
 def caption_strip(text: str, dst: Path, w: int = 0, max_h: int = 0) -> None:
-    """Transparent PNG sized to EXACTLY fit a wrapped caption (big white text,
-    black stroke), so the burn-in overlay can never clip a line off-frame.
+    """Transparent PNG sized to fit a wrapped caption (white text, black stroke),
+    guaranteed to stay inside a compact lower-third band — it can NEVER clip a line
+    off-frame top or bottom.
 
     Used to burn captions via ffmpeg `overlay` when the ffmpeg build lacks
     libass/libfreetype (so `subtitles`/`drawtext` filters are unavailable).
-    The strip auto-grows in height and shrinks font on BOTH width and height so
-    long sentence-level cues stay fully inside the rendered PNG (see burn_subs,
-    which positions by the PNG's actual height + a safe bottom margin). Width and
-    the height budget default to the current canvas, so captions fit any aspect.
+
+    Two guarantees keep long sentence-level cues tidy:
+    1. Each line is wrapped to FILL the usable width (chars-per-line derived from the
+       font's measured average glyph width) → the fewest possible lines → shortest block.
+    2. The font shrinks until the block fits a tight height budget (~22% of canvas H),
+       and the PNG height is HARD-CAPPED at that budget. Combined with burn_subs'
+       bottom margin, the whole caption is always on-frame in any aspect.
     """
     w = w or canvas.W
-    max_h = max_h or round(canvas.H * 0.29)   # ~560px on vertical, ~313px on landscape
-    # On a wide (landscape) canvas, wrap to more characters per line so the block
-    # fills the frame width instead of a narrow vertical column.
-    wrap_chars = 40 if canvas.W > canvas.H else 26
-    pad, spacing, stroke = 28, 12, 8
+    max_h = max_h or round(canvas.H * 0.22)   # ~422px vertical, ~238px landscape
+    pad, spacing, stroke = 24, 10, 6
     max_w = w - 120
     probe = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    txt = text.strip() or " "
 
     def layout(size: int) -> tuple[str, int, int]:
         font = _font(size)
-        wrapped = textwrap.fill(text.strip(), width=wrap_chars) or " "
-        bbox = probe.multiline_textbbox((0, 0), wrapped, font=font, spacing=spacing, align="center")
-        return wrapped, bbox[2] - bbox[0], bbox[3] - bbox[1]
+        # chars/line that fill the usable width → fewest lines → shortest block
+        avg = max(1.0, probe.textlength("abcdefghijklmnopqrstuvwxyz ", font=font) / 27)
+        wrap_chars = max(10, int((max_w - 2 * stroke) / avg))
+        wrapped = textwrap.fill(txt, width=wrap_chars) or " "
+        lines = wrapped.split("\n")
+        # REAL rendered height from font metrics (the glyph bbox under-reports
+        # multiline advance + stroke, which used to clip the block). Width is the
+        # widest stroked line.
+        asc, desc = font.getmetrics()
+        line_h = asc + desc + 2 * stroke
+        th = len(lines) * line_h + (len(lines) - 1) * spacing
+        tw = max(probe.textlength(ln, font=font) for ln in lines) + 2 * stroke
+        return wrapped, int(tw), int(th)
 
-    size = 64
+    size = 56
     wrapped, tw, th = layout(size)
-    # shrink until the block fits the usable width AND the height budget (or font floor)
-    while size > 30 and (tw > max_w or th > max_h - 2 * pad):
-        size -= 4
+    # shrink until the block fits BOTH the usable width and the height budget
+    while size > 20 and (tw > max_w or th > max_h - 2 * pad):
+        size -= 3
         wrapped, tw, th = layout(size)
 
+    cw, ch = w, int(th + 2 * pad)   # sized to the true text height — never clips
     font = _font(size)
-    cw, ch = w, int(th + 2 * pad)
     img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.multiline_text((cw / 2, ch / 2), wrapped, font=font, fill=(255, 255, 255),

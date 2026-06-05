@@ -170,8 +170,9 @@ def audio(run_id: str, sfx_provider: Optional[str] = None,
 
 @app.command()
 def voice(run_id: str, provider: Optional[str] = None, voice_name: str = "",
-          captions: str = "burn", music: Optional[Path] = None) -> None:
-    """Stage 5 — TTS voiceover + captions, muxed over video."""
+          captions: str = "off", music: Optional[Path] = None) -> None:
+    """Stage 5 — TTS voiceover, muxed over video. Captions OFF by default
+    (YouTube auto-generates them); pass --captions burn to hard-burn them in."""
     d, m = _load(run_id)
     prov = provider or config.default_provider("voice")
     r = voice_stage.run(d, prov, voice=voice_name, captions=captions, music=music)
@@ -276,7 +277,7 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
         script_provider: Optional[str] = None, image_provider: Optional[str] = None,
         cheap_image_provider: Optional[str] = None,
         video_strategy: Optional[str] = None, video_model: Optional[str] = None,
-        voice_provider: Optional[str] = None, captions: str = "burn",
+        voice_provider: Optional[str] = None, captions: str = "off",
         voice_name: str = "", tone: str = "",
         sfx_provider: Optional[str] = None, music_provider: Optional[str] = None,
         transition: str = "cut", char_ref: Optional[Path] = None,
@@ -438,6 +439,95 @@ def m_ideate(channel: str = "", provider: Optional[str] = None, n: int = 1,
     if j.in_cold_start:
         console.print(f"[yellow]cold start:[/] {j.deployed_count}/{j.bootstrap_target} "
                       f"deployed — exploring; relative virality unlocks at {j.bootstrap_target}.")
+
+
+@marketing_app.command("add")
+def m_add(idea: str, channel: str = "", hook: str = "", assumption: str = "",
+          goal: str = "", theme: str = "", tags: str = "", exploit: bool = False) -> None:
+    """Helper (NO LLM) — append ONE agent-authored bet to the backlog as a `planned` entry.
+
+    Use when the AGENT did the ideation (skill-driven) and just needs to persist it safely
+    (correct id, schema, journal.md re-render). `--tags` is comma-separated; `--exploit`
+    marks an exploitation bet (default = exploration). Scripts are helpers; the thinking is
+    the agent's."""
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    e = mj.Entry(id=j.next_id(), idea=idea, hook=hook, assumption=assumption, goal=goal,
+                 theme=theme, tags=[t.strip() for t in tags.split(",") if t.strip()],
+                 explore=not exploit)
+    j.entries.append(e)
+    mj.save(j)
+    console.print(f"[green]{e.id}[/] queued (planned) — {e.idea}")
+    console.print(f"  [cyan]deploy →[/] {_deploy_cmd(e, channel)}")
+
+
+@marketing_app.command("backlog")
+def m_backlog(channel: str = "") -> None:
+    """Helper (NO LLM) — list the backlog (planned, not-yet-deployed bets) for the agent to
+    pick from. Prioritization (the 60/40 explore/exploit pull) is the AGENT's decision — this
+    only shows the queue + the current explore/exploit balance."""
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    planned = [e for e in j.entries if e.status == "planned"]
+    if not planned:
+        console.print("[dim](backlog empty — run ideate / marketing add)[/]")
+        return
+    n_expl = sum(1 for e in planned if e.explore)
+    console.print(f"[bold]backlog[/] — {len(planned)} planned "
+                  f"({n_expl} explore / {len(planned) - n_expl} exploit)")
+    for e in planned:
+        kind = "explore" if e.explore else "exploit"
+        console.print(f"[green]{e.id}[/] [{kind}] {e.idea}  [dim]{e.theme}[/]")
+
+
+@marketing_app.command("recall")
+def m_recall(query: str, channel: str = "", k: int = 6) -> None:
+    """Helper (NO LLM) — retrieve the past MEASURED bets most RELEVANT to `query` (episodic
+    memory). Feed these lessons into agent-driven ideate/learn so the next bet reflects what
+    actually worked, not just what's recent. Empty until videos are measured."""
+    from studio.marketing import journal as mj
+    from studio.marketing import memory
+
+    j = mj.load(channel)
+    block = memory.recall_block(j, query, k=k)
+    console.print(block or "[dim](nothing measured yet — explore)[/]")
+
+
+@marketing_app.command("strategy")
+def m_strategy(channel: str = "", direction: str = "", winning: str = "", losing: str = "",
+               seeds: str = "", niche: str = "", note: str = "") -> None:
+    """Helper (NO LLM) — persist an AGENT's reflection into the journal's long-term strategy.
+
+    The agent does the thinking (which assumptions held, what pattern wins) then records it
+    here. Semicolon-separated lists for --winning/--losing/--seeds. `--note ENTRY_ID=text`
+    files a per-bet learning. Only non-empty fields are written; omit to leave a field as-is."""
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    s = j.strategy
+    if niche:
+        s.niche = niche
+    if direction:
+        s.current_direction = direction
+    if winning:
+        s.winning_patterns = [x.strip() for x in winning.split(";") if x.strip()]
+    if losing:
+        s.losing_patterns = [x.strip() for x in losing.split(";") if x.strip()]
+    if seeds:
+        s.next_seeds = [x.strip() for x in seeds.split(";") if x.strip()]
+    if direction or winning or losing or seeds or niche:
+        s.updated_at = mj._now()
+    if note and "=" in note:
+        eid, _, text = note.partition("=")
+        e = j.get(eid.strip())
+        if e:
+            e.learnings = text.strip()
+        else:
+            console.print(f"[yellow]no entry {eid.strip()} — note skipped[/]")
+    mj.save(j)
+    console.print(f"[green]strategy updated[/] — {channel or 'default'}")
 
 
 @marketing_app.command("link")

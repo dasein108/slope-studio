@@ -143,4 +143,3 @@ renders it.
 See [`../10-architecture/cli-component-design.md`](../10-architecture/cli-component-design.md)
 for the CLI surface and [`../10-architecture/orchestration.md`](../10-architecture/orchestration.md)
 for chaining.
-</content>

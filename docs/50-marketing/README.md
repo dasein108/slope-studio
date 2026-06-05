@@ -1,7 +1,12 @@
 # Marketing — the viral growth loop
 
-> Operator playbook: the **`marketing-guru`** skill (`.claude/skills/marketing-guru/`).
-> This doc is the architecture + CLI reference behind it.
+> Operator playbook: the **`marketing-guru`** umbrella skill (`.claude/skills/marketing-guru/`),
+> which composes the per-step **lego-block skills** — `marketing-ideate`, `marketing-backlog`,
+> `marketing-deploy`, `marketing-measure`, `marketing-learn`, `marketing-journal`,
+> `marketing-report`, plus the `marketing-memory` reference. Any agent can invoke one step alone.
+> This doc is the architecture + CLI reference behind them.
+>
+> **How memory works (the self-improving part):** [`memory.md`](memory.md).
 
 Producing a Short is the `film-maker` half. **Growing a channel** is a different problem:
 *what* to make, and *did it work?* `marketing-guru` answers both with a closed feedback

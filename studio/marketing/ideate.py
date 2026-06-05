@@ -8,6 +8,10 @@ Synthesizes a new idea + hook + the assumption behind it, biased by:
 In COLD START (< bootstrap videos) it maximizes thematic DIVERSITY to map the space;
 afterwards it EXPLOITS proven winners while still reserving exploration bets.
 Falls back to a deterministic seed idea when no LLM key is present.
+
+Episodic memory: rather than feeding the last-N bets by recency, it RECALLS the past
+episodes most RELEVANT to the current direction (via `memory.recall`) and injects their
+lessons — the Reflexion/ERL pattern. See `docs/20-research/self-improving-loop.md`.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ from __future__ import annotations
 import json
 
 from studio.marketing import journal as jrnl
+from studio.marketing import memory
 from studio.providers import llm
 
 SYSTEM = """You are a viral short-form video strategist (YouTube Shorts / TikTok).
@@ -31,6 +36,9 @@ Patterns that FAILED so far: {losing}
 Idea seeds queued: {seeds}
 Live trend/narrative signals (from web research, may be empty):
 {signals}
+
+Relevant past episodes (most-relevant measured bets + what they taught — learn from these):
+{episodes}
 
 Already-tried ideas (do NOT repeat): {tried}
 
@@ -87,6 +95,12 @@ def generate(j: jrnl.Journal, provider: str, n: int = 1,
         "exploration bet into adjacent territory."
     )
     tried = "; ".join(e.idea for e in j.entries[-30:]) or "(none yet)"
+    # recall the episodes most relevant to where the loop is heading, not the most recent
+    query = " ".join([
+        j.strategy.niche, j.strategy.current_direction, signals,
+        *j.strategy.next_seeds, *j.strategy.winning_patterns,
+    ])
+    episodes = memory.recall_block(j, query, k=6) or "(nothing measured yet — explore)"
     user = USER_TMPL.format(
         niche=j.strategy.niche or "unusual knowledge: science, mystery, cosmos",
         phase="cold-start (exploring)" if cold else "optimizing",
@@ -95,7 +109,7 @@ def generate(j: jrnl.Journal, provider: str, n: int = 1,
         losing="; ".join(j.strategy.losing_patterns) or "(unknown)",
         seeds="; ".join(j.strategy.next_seeds) or "(none)",
         signals=signals.strip()[:3000] or "(none provided)",
-        tried=tried, n=n, mode_hint=mode_hint,
+        episodes=episodes, tried=tried, n=n, mode_hint=mode_hint,
     )
     try:
         data = json.loads(llm.complete(provider, SYSTEM, user))
