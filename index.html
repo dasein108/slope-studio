@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slope Studio — Effects Gallery</title>
+<style>
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 -apple-system, system-ui, sans-serif;
+       background: #0d0f14; color: #e6e8ee; padding: 28px clamp(16px, 4vw, 56px); }
+h1 { margin: 0 0 4px; font-size: 26px; }
+.sub { color: #8b93a7; margin: 0 0 28px; }
+.toc { margin: 0 0 28px; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.toc a { color: #cdd3e0; text-decoration: none; background: #1a1e28; padding: 5px 11px;
+         border-radius: 999px; font-size: 13px; border: 1px solid #232838; }
+.toc a:hover { background: #232a3a; }
+section { margin: 0 0 40px; scroll-margin-top: 16px; }
+h2 { margin: 0 0 4px; font-size: 19px; }
+h2 code { background: #1a1e28; padding: 2px 8px; border-radius: 6px; font-size: 16px; color: #7fd1ff; }
+.desc { color: #9aa3b8; margin: 0 0 16px; max-width: 70ch; }
+.grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+figure { margin: 0; background: #141823; border: 1px solid #222838; border-radius: 12px;
+         overflow: hidden; }
+video { display: block; width: 100%; aspect-ratio: 9/16; background: #000; object-fit: contain; }
+figcaption { padding: 9px 12px; font-size: 13px; color: #cdd3e0; font-weight: 600; }
+.missing { padding: 20px; color: #ff8a8a; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Slope Studio — Effects Gallery</h1>
+<p class="sub">52 demo clips · generated 2026-06-04 22:38 · rebuild: <code>python examples/make_examples.py &amp;&amp; python examples/build_index.py</code></p>
+<nav><ul class="toc"><a href="#puppet">puppet</a><a href="#atmosphere">atmosphere</a><a href="#fx">fx</a><a href="#slice">slice</a><a href="#parallax">parallax</a><a href="#blurred-parallax">blurred-parallax</a><a href="#motion">motion</a><a href="#kinetic">kinetic</a><a href="#static">static</a><a href="#manim">manim</a><a href="#talkinghead">talkinghead</a><a href="#transitions">transitions</a></ul></nav>
+  <section id="puppet">
+    <h2><code>puppet</code></h2>
+    <p class="desc">Free cutout animation — the figure moves itself: idle bob/sway, hop, shake/nod head, and per-limb raise/wave (rembg cutout, $0).</p>
+    <div class="grid">
+      <figure><video src="examples/out/puppet_idle.mp4" controls loop muted autoplay playsinline></video><figcaption>idle</figcaption></figure>
+      <figure><video src="examples/out/puppet_hop.mp4" controls loop muted autoplay playsinline></video><figcaption>hop</figcaption></figure>
+      <figure><video src="examples/out/puppet_shake.mp4" controls loop muted autoplay playsinline></video><figcaption>shake</figcaption></figure>
+      <figure><video src="examples/out/puppet_nod.mp4" controls loop muted autoplay playsinline></video><figcaption>nod</figcaption></figure>
+      <figure><video src="examples/out/puppet_raise.mp4" controls loop muted autoplay playsinline></video><figcaption>raise</figcaption></figure>
+      <figure><video src="examples/out/puppet_wave.mp4" controls loop muted autoplay playsinline></video><figcaption>wave</figcaption></figure>
+    </div>
+  </section>
+  <section id="atmosphere">
+    <h2><code>atmosphere</code></h2>
+    <p class="desc">Weather/particle overlay post-pass that composites onto ANY clip (rain · snow · embers · fog · blood · petals · leaves · wind).</p>
+    <div class="grid">
+      <figure><video src="examples/out/atmosphere_rain.mp4" controls loop muted autoplay playsinline></video><figcaption>rain</figcaption></figure>
+      <figure><video src="examples/out/atmosphere_snow.mp4" controls loop muted autoplay playsinline></video><figcaption>snow</figcaption></figure>
+      <figure><video src="examples/out/atmosphere_embers.mp4" controls loop muted autoplay playsinline></video><figcaption>embers</figcaption></figure>
+      <figure><video src="examples/out/atmosphere_fog.mp4" controls loop muted autoplay playsinline></video><figcaption>fog</figcaption></figure>
+      <figure><video src="examples/out/atmosphere_blood.mp4" controls loop muted autoplay playsinline></video><figcaption>blood</figcaption></figure>
+      <figure><video src="examples/out/atmosphere_petals.mp4" controls loop muted autoplay playsinline></video><figcaption>petals</figcaption></figure>
+      <figure><video src="examples/out/atmosphere_leaves.mp4" controls loop muted autoplay playsinline></video><figcaption>leaves</figcaption></figure>
+      <figure><video src="examples/out/atmosphere_wind.mp4" controls loop muted autoplay playsinline></video><figcaption>wind</figcaption></figure>
+    </div>
+  </section>
+  <section id="fx">
+    <h2><code>fx</code></h2>
+    <p class="desc">Free 'look' post-passes (Scene.fx, applied on any clip): grain · vignette · chroma aberration · glitch · sunrise grade · god-rays · flash (impact colour punch — white/yellow/red/black — that fades back to normal).</p>
+    <div class="grid">
+      <figure><video src="examples/out/fx_grain.mp4" controls loop muted autoplay playsinline></video><figcaption>grain</figcaption></figure>
+      <figure><video src="examples/out/fx_vignette.mp4" controls loop muted autoplay playsinline></video><figcaption>vignette</figcaption></figure>
+      <figure><video src="examples/out/fx_chroma.mp4" controls loop muted autoplay playsinline></video><figcaption>chroma</figcaption></figure>
+      <figure><video src="examples/out/fx_glitch.mp4" controls loop muted autoplay playsinline></video><figcaption>glitch</figcaption></figure>
+      <figure><video src="examples/out/fx_sunrise.mp4" controls loop muted autoplay playsinline></video><figcaption>sunrise</figcaption></figure>
+      <figure><video src="examples/out/fx_godrays.mp4" controls loop muted autoplay playsinline></video><figcaption>godrays</figcaption></figure>
+      <figure><video src="examples/out/fx_flash-white.mp4" controls loop muted autoplay playsinline></video><figcaption>flash-white</figcaption></figure>
+      <figure><video src="examples/out/fx_flash-yellow.mp4" controls loop muted autoplay playsinline></video><figcaption>flash-yellow</figcaption></figure>
+      <figure><video src="examples/out/fx_flash-red.mp4" controls loop muted autoplay playsinline></video><figcaption>flash-red</figcaption></figure>
+      <figure><video src="examples/out/fx_flash-black.mp4" controls loop muted autoplay playsinline></video><figcaption>flash-black</figcaption></figure>
+    </div>
+  </section>
+  <section id="slice">
+    <h2><code>slice</code></h2>
+    <p class="desc">Cut / reveal — the still splits into halves that slide together (diagonal, or horizontal with a red flash).</p>
+    <div class="grid">
+      <figure><video src="examples/out/slice_diag.mp4" controls loop muted autoplay playsinline></video><figcaption>diag</figcaption></figure>
+      <figure><video src="examples/out/slice_horizontal.mp4" controls loop muted autoplay playsinline></video><figcaption>horizontal</figcaption></figure>
+      <figure><video src="examples/out/slice_vertical.mp4" controls loop muted autoplay playsinline></video><figcaption>vertical</figcaption></figure>
+    </div>
+  </section>
+  <section id="parallax">
+    <h2><code>parallax</code></h2>
+    <p class="desc">TRUE parallax — static sharp subject, the REAL background drifts behind it. The subject is inpainted out of the bg, so there's no ghost twin.</p>
+    <div class="grid">
+      <figure><video src="examples/out/parallax_driftright.mp4" controls loop muted autoplay playsinline></video><figcaption>driftright</figcaption></figure>
+      <figure><video src="examples/out/parallax_driftleft.mp4" controls loop muted autoplay playsinline></video><figcaption>driftleft</figcaption></figure>
+      <figure><video src="examples/out/parallax_driftup.mp4" controls loop muted autoplay playsinline></video><figcaption>driftup</figcaption></figure>
+      <figure><video src="examples/out/parallax_driftdown.mp4" controls loop muted autoplay playsinline></video><figcaption>driftdown</figcaption></figure>
+    </div>
+  </section>
+  <section id="blurred-parallax">
+    <h2><code>blurred-parallax</code></h2>
+    <p class="desc">Soft-backdrop parallax — static subject over a blurred panning background (2-plane sky/ground, or single). For busy backgrounds.</p>
+    <div class="grid">
+      <figure><video src="examples/out/blurred-parallax_layers.mp4" controls loop muted autoplay playsinline></video><figcaption>layers</figcaption></figure>
+      <figure><video src="examples/out/blurred-parallax_single.mp4" controls loop muted autoplay playsinline></video><figcaption>single</figcaption></figure>
+    </div>
+  </section>
+  <section id="motion">
+    <h2><code>motion</code></h2>
+    <p class="desc">zoompan presets — gentle drift / zoom on a still (the only motion-* the operator keeps; lateral drift over twitchy zoom).</p>
+    <div class="grid">
+      <figure><video src="examples/out/motion_driftright.mp4" controls loop muted autoplay playsinline></video><figcaption>driftright</figcaption></figure>
+      <figure><video src="examples/out/motion_driftleft.mp4" controls loop muted autoplay playsinline></video><figcaption>driftleft</figcaption></figure>
+      <figure><video src="examples/out/motion_driftup.mp4" controls loop muted autoplay playsinline></video><figcaption>driftup</figcaption></figure>
+      <figure><video src="examples/out/motion_driftdown.mp4" controls loop muted autoplay playsinline></video><figcaption>driftdown</figcaption></figure>
+      <figure><video src="examples/out/motion_zoomin.mp4" controls loop muted autoplay playsinline></video><figcaption>zoomin</figcaption></figure>
+      <figure><video src="examples/out/motion_zoomout.mp4" controls loop muted autoplay playsinline></video><figcaption>zoomout</figcaption></figure>
+    </div>
+  </section>
+  <section id="kinetic">
+    <h2><code>kinetic</code></h2>
+    <p class="desc">Typographic headline animated over the still (Pillow text overlay).</p>
+    <div class="grid">
+      <figure><video src="examples/out/kinetic_headline.mp4" controls loop muted autoplay playsinline></video><figcaption>headline</figcaption></figure>
+    </div>
+  </section>
+  <section id="static">
+    <h2><code>static</code></h2>
+    <p class="desc">A deliberately held still — better than a twitchy zoom for a calm beat.</p>
+    <div class="grid">
+      <figure><video src="examples/out/static_hold.mp4" controls loop muted autoplay playsinline></video><figcaption>hold</figcaption></figure>
+    </div>
+  </section>
+  <section id="manim">
+    <h2><code>manim</code></h2>
+    <p class="desc">Vector animation (sun rises, shapes, morphs, kinetic type) — for educational/diagram scenes.</p>
+    <div class="grid">
+      <figure><video src="examples/out/manim_sunrise.mp4" controls loop muted autoplay playsinline></video><figcaption>sunrise</figcaption></figure>
+    </div>
+  </section>
+  <section id="talkinghead">
+    <h2><code>talkinghead</code></h2>
+    <p class="desc">2D lip-sync — static face, the mouth moves with the narration (Rhubarb visemes → mouth-sprite swap).</p>
+    <div class="grid">
+      <figure><video src="examples/out/talkinghead_lipsync.mp4" controls loop muted autoplay playsinline></video><figcaption>lipsync</figcaption></figure>
+    </div>
+  </section>
+  <section id="transitions">
+    <h2><code>transitions</code></h2>
+    <p class="desc">Scene-to-scene xfade transitions (50+ available) — two stills joined with each named transition.</p>
+    <div class="grid">
+      <figure><video src="examples/out/transitions_fade.mp4" controls loop muted autoplay playsinline></video><figcaption>fade</figcaption></figure>
+      <figure><video src="examples/out/transitions_fadeblack.mp4" controls loop muted autoplay playsinline></video><figcaption>fadeblack</figcaption></figure>
+      <figure><video src="examples/out/transitions_dissolve.mp4" controls loop muted autoplay playsinline></video><figcaption>dissolve</figcaption></figure>
+      <figure><video src="examples/out/transitions_wipeleft.mp4" controls loop muted autoplay playsinline></video><figcaption>wipeleft</figcaption></figure>
+      <figure><video src="examples/out/transitions_slideup.mp4" controls loop muted autoplay playsinline></video><figcaption>slideup</figcaption></figure>
+      <figure><video src="examples/out/transitions_smoothright.mp4" controls loop muted autoplay playsinline></video><figcaption>smoothright</figcaption></figure>
+      <figure><video src="examples/out/transitions_circleopen.mp4" controls loop muted autoplay playsinline></video><figcaption>circleopen</figcaption></figure>
+      <figure><video src="examples/out/transitions_pixelize.mp4" controls loop muted autoplay playsinline></video><figcaption>pixelize</figcaption></figure>
+      <figure><video src="examples/out/transitions_radial.mp4" controls loop muted autoplay playsinline></video><figcaption>radial</figcaption></figure>
+    </div>
+  </section>
+</body>
+</html>
