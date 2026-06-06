@@ -455,16 +455,16 @@ def post_fx(src: Path, dst: Path, name: str, seconds: float, w: int = 0, h: int 
               "eq=contrast=1.12:saturation=0.82:brightness='0.035*sin(27*t)+0.025*sin(11*t)',"
               "noise=alls=22:allf=t,vignette=PI/4[v]")
     elif n in ("godrays", "lightrays"):
-        # build neutral-white shafts on a GRAY plane, convert to RGB, screen-blend in RGB
-        # (screen in yuv420p shifts the chroma planes → colour cast).
+        # build shafts on a GRAY plane, tint them warm GOLD, then screen-blend in RGB.
+        # (a plain gray→screen blend in this build picks up a cool magenta cast; tinting
+        # the rays gold via colorchannelmixer both fixes that and gives true golden rays.)
         ox, oy = w // 2, int(h * 0.08)
-        # distinct radial SHAFTS = sharp angular stripes (sin(angle*n)^k), windowed to a
-        # downward cone and faded with distance; gray→rgb, screen-blended subtly in RGB.
         ray = (f"190*pow(max(0\\,sin((atan2(Y-{oy}\\,X-{ox})+0.04*sin(T))*22))\\,6)"
                f"*pow(max(0\\,cos(atan2(Y-{oy}\\,X-{ox})-1.571))\\,2)")
         fc = (f"[0:v]split[a][b];[a]format=rgb24[base];"
-              f"[b]format=gray,geq=lum='{ray}',gblur=sigma=6,format=rgb24[r];"
-              f"[base][r]blend=all_mode=screen:all_opacity=0.42[v]")
+              f"[b]format=gray,geq=lum='{ray}',gblur=sigma=6,format=rgb24,"
+              f"colorchannelmixer=rr=1.0:gg=0.80:bb=0.34[r];"   # warm gold shafts
+              f"[base][r]blend=all_mode=screen:all_opacity=0.45[v]")
     else:
         import shutil
         if src != dst:

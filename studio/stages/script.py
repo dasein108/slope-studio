@@ -6,7 +6,7 @@ import json
 import time
 from pathlib import Path
 
-from studio import paths
+from studio import artdirect, paths
 from studio.models import Scene, Script
 from studio.providers import llm
 
@@ -31,7 +31,24 @@ AUDIO DESIGN (commercial-safe; the pipeline generates these):
   there is a clear diegetic moment (a sword clash, a whoosh, a door slam, a breath).
   Each: {"prompt": vivid sound description, "at": seconds INTO the scene to trigger,
   "dur": 0.5-3 length, "gain_db": loudness vs voice (-6 quiet .. 0 prominent)}.
-  Most scenes need NO sfx — leave the list empty rather than inventing noise."""
+  Most scenes need NO sfx — leave the list empty rather than inventing noise.
+
+ART DIRECTION (free motion + looks — pick per scene from these menus; a heuristic pass
+fills anything you omit, so only set what clearly fits, and VARY it across scenes):
+- "animator" (how the still moves, all free):
+  kenburns (gentle pan/zoom, safe default) · motion-driftleft/driftright/driftup/driftdown
+  (lateral drift) · motion-zoomin/zoomout · parallax (BEST for scenery/landscapes with a
+  clear subject — foreground stays, background drifts for real depth) · kinetic (slides a
+  big on-screen HEADLINE — use ONLY on the opening hook or a scene built around short text)
+  · slice (a split-and-slide reveal at a hard cut) · static (a held shot — good for an
+  outro/CTA). Spread these out; don't repeat one animator every scene.
+- "atmosphere" (one weather/particle overlay, only when the scene calls for it):
+  rain · snow · embers · blood · petals · leaves · wind · fog. Omit for most scenes.
+- "fx" (0-2 colour/look post-passes, sparingly): grain · vignette · oldfilm (vintage film)
+  · godrays · sunrise · sunset · chroma · glitch · flash-white/yellow/red/black (a brief
+  impact punch for an action/violence beat). Use to set MOOD, not as decoration.
+- "transition" (into this scene): cut · fade · dissolve · wipeleft · slideup · circleopen.
+  Omit to let the pipeline choose."""
 
 USER_TMPL = """Idea: {idea}
 Total duration: {duration} seconds. Aspect: {aspect}. Voiceover: {voice}.
@@ -48,7 +65,8 @@ Return JSON:
   "scenes": [
     {{"id":1,"start_s":0,"end_s":6,"visual_prompt":"<character desc> ... , 9:16",
       "narration":"...","on_screen_text":"SHORT HOOK","motion_hint":"slow push-in",
-      "image_role":"hero",
+      "image_role":"hero","animator":"kinetic","atmosphere":"","fx":["vignette"],
+      "transition":"fade",
       "sfx":[{{"prompt":"metallic sword unsheathing, sharp","at":0.5,"dur":1.2,"gain_db":-3}}]}}
   ]
 }}"""
@@ -69,6 +87,7 @@ def run(run_dir: Path, idea: str, duration: int, aspect: str, voice: bool,
         data["voice"] = voice
         script = Script.model_validate(data)
 
+    artdirect.decorate(script)   # validate LLM effect picks + fill gaps (hybrid art direction)
     paths.script_json(run_dir).write_text(script.model_dump_json(indent=2))
     return script, round(time.time() - t0, 2), 0.0  # cost ~0 for script
 

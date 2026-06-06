@@ -52,6 +52,12 @@ studio/
                     puppet = rembg cutout figure motion (idle/hop/shake/nod head)
                     talkinghead = Rhubarb 2D lip-sync (mouth sprites on a static face)
   tiers.py          tier presets (free/cheap/balanced/premium) → providers + strategy
+  artdirect.py      HYBRID effect selection: validates the script LLM's per-scene effect
+                    picks (animator/atmosphere/fx/transition) + fills gaps with content/
+                    position heuristics (hook→kinetic, scenery→parallax, mood keywords→
+                    atmosphere/fx) + taste caps (flash once; thin blanket atmosphere). This
+                    is what makes the effect library actually get USED (not just kenburns) —
+                    runs in stages/script.py for BOTH the LLM and offline stub paths.
   stages/<stage>.py one pure function per stage (incl. narrate.py)
   providers/
     base.py         GenResult(path, cost_usd, latency_s, provider, note)

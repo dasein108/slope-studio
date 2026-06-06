@@ -34,6 +34,13 @@ def scene_image_bg(d: Path, sid: int) -> Path:
     return visuals_dir(d) / f"scene_{sid:02d}_bg.png"
 
 
+def scene_image_fg(d: Path, sid: int) -> Path:
+    """Separate FOREGROUND plate — the subject generated alone on a flat background and keyed
+    to transparency (Route 1). A cleaner cutout than rembg-ing the busy main still; pairs with
+    the bg plate for fully purpose-built layered parallax."""
+    return visuals_dir(d) / f"scene_{sid:02d}_fg.png"
+
+
 def clips_dir(d: Path) -> Path:
     return d / "03_clips"
 

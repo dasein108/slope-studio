@@ -77,9 +77,11 @@ def complete(provider: str, system: str, user: str) -> str:
             "https://api.groq.com/openai/v1", env("GROQ_API_KEY"),
             "llama-3.1-8b-instant", system, user)
     if provider == "openrouter":
+        # default to a top model (GPT-5); override with OPENROUTER_MODEL for any
+        # openrouter slug (e.g. "anthropic/claude-opus-4", "google/gemini-2.5-pro").
         return _openai_compatible(
             "https://openrouter.ai/api/v1", env("OPENROUTER_API_KEY"),
-            "meta-llama/llama-3.1-8b-instruct:free", system, user)
+            env("OPENROUTER_MODEL") or "openai/gpt-5", system, user)
     if provider == "openai":
         return _openai_compatible(
             "https://api.openai.com/v1", env("OPENAI_API_KEY"),

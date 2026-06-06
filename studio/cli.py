@@ -79,19 +79,21 @@ def script(run_id: str, provider: Optional[str] = None) -> None:
 def visuals(run_id: str, provider: Optional[str] = None,
             cheap_provider: Optional[str] = None,
             char_ref: Optional[Path] = None, force: bool = False,
-            parallax_plates: bool = False) -> None:
+            parallax_plates: bool = False, parallax_fg: bool = False) -> None:
     """Stage 2 — keyframe image per scene. Scenes with image_role="bg" use
     --cheap-provider (cheaper model for backgrounds/overlays); hero/character use
     --provider (quality + character ref).
 
     --parallax-plates: also generate a separate background plate (subject removed) for
-    each animator:"parallax" scene → true layered 2.5D (no torn frame). +1 image/scene;
-    on by default for balanced/premium tiers via `run`."""
+    each animator:"parallax" scene → true layered 2.5D (no torn frame). +1 image/scene.
+    --parallax-fg: also generate a separate FOREGROUND plate (subject on a flat bg, keyed
+    to transparency) for a cleaner cutout than rembg-ing the busy still (Route 1).
+    +1 image/scene; pair with --parallax-plates for fully purpose-built layers."""
     d, m = _load(run_id)
     prov = provider or config.default_provider("visuals")
     cheap = cheap_provider or config.default_provider("visuals_cheap")
     r = visuals_stage.run(d, prov, char_ref=char_ref, force=force, cheap_provider=cheap,
-                          parallax_plates=parallax_plates)
+                          parallax_plates=parallax_plates, parallax_fg=parallax_fg)
     m.record("visuals", done=True, provider=prov, cost_usd=r.cost_usd, latency_s=r.latency_s,
              note=r.note)
     manifest.save(d, m)

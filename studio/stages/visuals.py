@@ -17,9 +17,29 @@ PLATE_SUFFIX = (
     "background"
 )
 
+FG_SUFFIX = (
+    ". FOREGROUND SUBJECT PLATE — render ONLY the main subject/character, full body, centered, "
+    "isolated on a PLAIN FLAT solid pale-grey background with NOTHING else in frame (no scenery, "
+    "no props, no shadow), even studio lighting — composed to be cleanly cut out."
+)
+
+
+def _key_foreground(path: Path) -> bool:
+    """Cut the (flat-bg) subject to transparency with rembg. Returns True on success; on any
+    failure the plate is removed so parallax falls back to cutting the main still."""
+    try:
+        from rembg import remove
+        from PIL import Image
+        remove(Image.open(path).convert("RGBA")).save(path)
+        return True
+    except Exception:
+        path.unlink(missing_ok=True)
+        return False
+
 
 def run(run_dir: Path, provider: str, char_ref: Path | None = None,
-        force: bool = False, cheap_provider: str = "", parallax_plates: bool = False) -> GenResult:
+        force: bool = False, cheap_provider: str = "", parallax_plates: bool = False,
+        parallax_fg: bool = False) -> GenResult:
     """Generate one keyframe per scene. With `cheap_provider`, scenes flagged
     `image_role="bg"` (backgrounds/overlays) use the cheaper model, while
     `hero`/default scenes (character/main person) use the quality `provider` — and
@@ -52,8 +72,9 @@ def run(run_dir: Path, provider: str, char_ref: Path | None = None,
             total_cost += res.cost_usd
             total_latency += res.latency_s
             counts[prov] = counts.get(prov, 0) + 1
+        is_parallax = (scene.animator or "").strip() == "parallax"
         # layered-parallax background plate (subject removed) — balanced+ only.
-        if parallax_plates and (scene.animator or "").strip() == "parallax":
+        if parallax_plates and is_parallax:
             bgdst = paths.scene_image_bg(run_dir, scene.id)
             if not (bgdst.exists() and not force):
                 res2 = image.generate(prov, prompt + PLATE_SUFFIX, bgdst, refs=None,
@@ -61,6 +82,17 @@ def run(run_dir: Path, provider: str, char_ref: Path | None = None,
                 total_cost += res2.cost_usd
                 total_latency += res2.latency_s
                 counts[f"{prov}+plate"] = counts.get(f"{prov}+plate", 0) + 1
+        # Route 1: separate FOREGROUND plate — subject on a flat bg, keyed to transparency
+        # (cleaner cutout than rembg-ing the busy still; uses the char ref to match the scene).
+        if parallax_fg and is_parallax:
+            fgdst = paths.scene_image_fg(run_dir, scene.id)
+            if not (fgdst.exists() and not force):
+                res3 = image.generate(prov, prompt + FG_SUFFIX, fgdst, refs=use_refs,
+                                      aspect=script.aspect, index=idx)
+                total_cost += res3.cost_usd
+                total_latency += res3.latency_s
+                if _key_foreground(fgdst):
+                    counts[f"{prov}+fg"] = counts.get(f"{prov}+fg", 0) + 1
     n = sum(counts.values())
     mix = ", ".join(f"{v}×{k}" for k, v in counts.items()) or "0"
     return GenResult(path=paths.visuals_dir(run_dir), cost_usd=round(total_cost, 4),

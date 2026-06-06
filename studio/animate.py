@@ -151,41 +151,61 @@ def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
                  else "down" if "down" in hint else "right")
     pan = {"left": "driftleft", "right": "driftright", "up": "driftup", "down": "driftdown"}[direction]
 
-    # TRUE parallax: cut the subject (rembg), hold it STATIC + sharp in front, and drift a
-    # background plane behind it. The plane is either a pre-generated `_bg.png` plate (best)
-    # or, when none exists, the same still with the subject INPAINTED OUT on the fly — the
-    # inpaint fills the hole, so the drifting plane has no moving hole/ghost. Gated by subject
-    # coverage so a subjectless still (no clean subject) safely falls through to a plain pan.
-    plate = image.with_name(image.stem + "_bg.png")        # optional pre-generated bg plate
-    tmp_bg = None
+    # TRUE parallax: a STATIC sharp subject in front, a background plane DRIFTING behind it.
+    # Each layer comes from the best source available, in order:
+    #   foreground = a pre-generated `_fg.png` plate (Route 1: subject keyed on a flat bg) →
+    #                else the subject cut from the main still with rembg.
+    #   background = a pre-generated `_bg.png` plate (subject re-rendered out) →
+    #                else the main still with the subject INPAINTED OUT on the fly (no hole).
+    # Gated by subject coverage so a subjectless still safely falls through to a plain pan.
+    fg_plate = image.with_name(image.stem + "_fg.png")     # optional pre-generated fg plate
+    bg_plate = image.with_name(image.stem + "_bg.png")     # optional pre-generated bg plate
+    tmp: list = []
     try:
         import numpy as np
-        from rembg import remove
         from PIL import Image, ImageOps
-        src = ImageOps.fit(Image.open(image).convert("RGBA"), (w, h))
-        cut = remove(src)
+
+        # --- foreground (held static) ---
+        if fg_plate.exists():
+            cut = ImageOps.fit(Image.open(fg_plate).convert("RGBA"), (w, h))
+            src_tag = "fg-plate"
+        else:
+            from rembg import remove
+            cut = remove(ImageOps.fit(Image.open(image).convert("RGBA"), (w, h)))
+            src_tag = ""
         alpha = cut.split()[-1]
         cov = float((np.asarray(alpha, dtype=np.uint8) > 32).mean())
-        if 0.06 <= cov <= 0.55:                            # a plausible separable subject
-            fg = dst.with_name(dst.stem + "_fg.png")
-            cut.save(fg)
-            if plate.exists():
-                bg, note = plate, f"parallax (layered plate; subject {cov:.0%})"
-            else:
-                fitted = dst.with_name(dst.stem + "_fit.png")
-                src.convert("RGB").save(fitted)
-                tmp_bg = dst.with_name(dst.stem + "_bg.png")
-                _inpaint_subject(fitted, alpha).save(tmp_bg)   # erase subject → drift plane
-                fitted.unlink(missing_ok=True)
-                bg, note = tmp_bg, f"parallax (auto-inpaint; subject {cov:.0%})"
-            ffmpeg.parallax_drift(bg, fg, dst, seconds, direction=direction)
-            fg.unlink(missing_ok=True)
-            if tmp_bg:
-                tmp_bg.unlink(missing_ok=True)
-            return note
+        if not (0.06 <= cov <= 0.55):                      # no clean separable subject
+            raise ValueError("no plausible subject")
+        fg = dst.with_name(dst.stem + "_fg.png")
+        cut.save(fg)
+        tmp.append(fg)
+
+        # --- background (drifts) ---
+        if bg_plate.exists():
+            bg = bg_plate
+            src_tag = f"{src_tag}+bg-plate" if src_tag else "bg-plate"
+        else:
+            from rembg import remove
+            # inpaint needs the MAIN still's own subject mask (the fg plate's centred subject
+            # won't line up with where the subject sits in the scene).
+            mask = (alpha if not fg_plate.exists()
+                    else remove(ImageOps.fit(Image.open(image).convert("RGBA"), (w, h))).split()[-1])
+            fitted = dst.with_name(dst.stem + "_fit.png")
+            ImageOps.fit(Image.open(image).convert("RGB"), (w, h)).save(fitted)
+            tmp.append(fitted)
+            bg = dst.with_name(dst.stem + "_bg.png")
+            _inpaint_subject(fitted, mask).save(bg)
+            tmp.append(bg)
+            src_tag = f"{src_tag}+auto-inpaint" if src_tag else "auto-inpaint"
+
+        ffmpeg.parallax_drift(bg, fg, dst, seconds, direction=direction)
+        for t in tmp:
+            t.unlink(missing_ok=True)
+        return f"parallax ({src_tag}; subject {cov:.0%})"
     except Exception:
-        if tmp_bg:
-            tmp_bg.unlink(missing_ok=True)
+        for t in tmp:
+            t.unlink(missing_ok=True)
         pass  # any failure → safe pan below
 
     # Fallback: clean full-image lateral pan — bulletproof, never holes/tears.
