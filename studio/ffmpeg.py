@@ -461,9 +461,10 @@ def post_fx(src: Path, dst: Path, name: str, seconds: float, w: int = 0, h: int 
         ox, oy = w // 2, int(h * 0.08)
         ray = (f"190*pow(max(0\\,sin((atan2(Y-{oy}\\,X-{ox})+0.04*sin(T))*22))\\,6)"
                f"*pow(max(0\\,cos(atan2(Y-{oy}\\,X-{ox})-1.571))\\,2)")
-        fc = (f"[0:v]split[a][b];[a]format=rgb24[base];"
-              f"[b]format=gray,geq=lum='{ray}',gblur=sigma=6,format=rgb24,"
-              f"colorchannelmixer=rr=1.0:gg=0.80:bb=0.34[r];"   # warm gold shafts
+        # Build the shafts DIRECTLY as gold RGB (geq writes r/g/b per pixel) — the old
+        # gray→format→screen chain crushed the green channel and cast everything magenta.
+        fc = (f"[0:v]format=rgb24,split[base][m];"
+              f"[m]geq=r='1.00*({ray})':g='0.80*({ray})':b='0.34*({ray})',gblur=sigma=6[r];"
               f"[base][r]blend=all_mode=screen:all_opacity=0.45[v]")
     else:
         import shutil
