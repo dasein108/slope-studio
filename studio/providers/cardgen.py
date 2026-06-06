@@ -260,24 +260,46 @@ def mouth_sprite_image(shape: str, w: int = 260, h: int = 180):
     return img
 
 
-def headline_png(text: str, dst: Path, w: int = 0, h: int = 460) -> None:
-    """Transparent PNG of a big centered headline for kinetic-text overlays."""
+def headline_png(text: str, dst: Path, w: int = 0, h: int = 0) -> None:
+    """Transparent PNG of a big centered headline for kinetic-text overlays.
+
+    Fits ANY length and CANNOT clip: the PNG auto-sizes to the text, the line wrap
+    fills the usable width (fewest lines), and the font shrinks until the block fits
+    both the width AND a height budget — all measured from FONT METRICS + stroke (the
+    glyph bbox under-reports multiline+stroke height, which is what used to clip long
+    headlines like a 4-line on_screen_text). Same guarantee as cardgen.caption_strip."""
     w = w or canvas.W
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    budget = h or round(canvas.H * 0.30)   # max headline-block height (kinetic sits at ~18% H)
+    pad, spacing, stroke = 20, 14, 9
+    max_w = w - 110
+    probe = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    txt = (text or " ").upper().strip() or " "
+
+    def layout(size: int) -> tuple[str, int, int]:
+        font = _font(size)
+        avg = max(1.0, probe.textlength("ABCDEFGHIJKLMNOPQRSTUVWXYZ ", font=font) / 27)
+        wrap_chars = max(8, int((max_w - 2 * stroke) / avg))
+        wrapped = textwrap.fill(txt, width=wrap_chars) or " "
+        lines = wrapped.split("\n")
+        asc, desc = font.getmetrics()
+        line_h = asc + desc + 2 * stroke
+        th = len(lines) * line_h + (len(lines) - 1) * spacing
+        tw = max(probe.textlength(ln, font=font) for ln in lines) + 2 * stroke
+        return wrapped, int(tw), int(th)
+
+    size = 104
+    wrapped, tw, th = layout(size)
+    while size > 40 and (tw > max_w or th > budget - 2 * pad):
+        size -= 6
+        wrapped, tw, th = layout(size)
+
+    font = _font(size)
+    ch = int(th + 2 * pad)   # PNG sized to the text — no fixed height to clip against
+    img = Image.new("RGBA", (w, ch), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    font = _font(104)
-    wrapped = textwrap.fill((text or " ").upper(), width=15)
-    while font.size > 48:
-        widest = max((draw.textbbox((0, 0), ln, font=font)[2]
-                      for ln in wrapped.splitlines()), default=0)
-        if widest <= w - 110:
-            break
-        font = _font(font.size - 6)
-    bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=14, align="center")
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    draw.multiline_text(((w - tw) / 2, (h - th) / 2), wrapped, font=font,
-                        fill=(255, 255, 255), spacing=14, align="center",
-                        stroke_width=9, stroke_fill=(0, 0, 0))
+    draw.multiline_text((w / 2, ch / 2), wrapped, font=font, fill=(255, 255, 255),
+                        spacing=spacing, align="center", anchor="mm",
+                        stroke_width=stroke, stroke_fill=(0, 0, 0))
     img.save(dst)
 
 
@@ -296,11 +318,14 @@ def render(text: str, dst: Path, index: int = 0, w: int = 0, h: int = 0,
     headline = (text or subtitle or "").upper()
     font = _font(120)
     wrapped = textwrap.fill(headline, width=14) or " "
-    # shrink until it fits horizontally
-    while font.size > 48:
-        widest = max((draw.textbbox((0, 0), ln, font=font)[2]
-                      for ln in wrapped.splitlines()), default=0)
-        if widest <= w - 140:
+    # shrink until it fits BOTH the usable width and ~70% of frame height
+    max_h = int(h * 0.7)
+    while font.size > 44:
+        lines = wrapped.splitlines() or [" "]
+        widest = max((draw.textbbox((0, 0), ln, font=font)[2] for ln in lines), default=0)
+        asc, desc = font.getmetrics()
+        block_h = len(lines) * (asc + desc) + (len(lines) - 1) * 18
+        if widest <= w - 140 and block_h <= max_h:
             break
         font = _font(font.size - 8)
 
