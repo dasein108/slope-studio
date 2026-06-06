@@ -34,6 +34,39 @@ sun = Circle(radius=1.3, color=YELLOW, fill_opacity=1).move_to([0, -7, 0])
 self.play(sun.animate.move_to([0, 3, 0]), run_time=2.5, rate_func=smooth)
 self.wait(0.4)"""
 
+# literal vector animations — core mobjects only (no MathTex/LaTeX needed).
+_MORPH = """shape = Circle(radius=2.2, color=BLUE, stroke_width=10)
+self.play(Create(shape), run_time=0.9)
+self.play(Transform(shape, Square(side_length=4, color=GREEN, stroke_width=10)), run_time=0.9)
+self.play(Transform(shape, Triangle(color=YELLOW, stroke_width=10).scale(2.4)), run_time=0.9)
+self.play(shape.animate.rotate(PI), run_time=0.8)"""
+
+_SINE = """ax = Axes(x_range=[0, 7, 1], y_range=[-2, 2, 1], x_length=11, y_length=5.5)
+curve = ax.plot(lambda x: 1.6 * np.sin(x), color=YELLOW, stroke_width=8)
+self.play(Create(ax), run_time=1.0)
+self.play(Create(curve), run_time=2.2)
+self.wait(0.3)"""
+
+_ORBIT = """sun = Dot(color=YELLOW, radius=0.45)
+earth = Dot(color=BLUE, radius=0.22).shift(RIGHT * 3)
+moon = Dot(color=GRAY_B, radius=0.12).shift(RIGHT * 4)
+self.add(sun, earth, moon)
+self.play(Rotate(VGroup(earth, moon), angle=2 * PI, about_point=ORIGIN), run_time=3.2, rate_func=linear)"""
+
+_BARS = """heights = [2.2, 3.6, 1.4, 4.2, 2.8]
+bars = VGroup()
+for i, hgt in enumerate(heights):
+    bar = Rectangle(width=0.8, height=hgt, fill_color=TEAL, fill_opacity=0.95, stroke_width=0)
+    bar.move_to([i * 1.15 - 2.3, hgt / 2 - 2.2, 0])
+    bars.add(bar)
+self.play(LaggedStart(*[GrowFromEdge(b, DOWN) for b in bars], lag_ratio=0.25), run_time=2.6)"""
+
+_SPIRAL = """spiral = ParametricFunction(
+    lambda t: np.array([0.16 * t * np.cos(t), 0.16 * t * np.sin(t), 0]),
+    t_range=[0, 6 * PI], color=PINK, stroke_width=8)
+self.play(Create(spiral), run_time=3.0)
+self.play(spiral.animate.rotate(PI / 2), run_time=0.6)"""
+
 # effect -> list of variants. A variant is (label, animator, scene_kwargs[, narration]).
 # A 4th element (str) means "needs narration audio" (talkinghead) and is TTS-synthed.
 EFFECTS: dict[str, list[tuple]] = {
@@ -52,9 +85,11 @@ EFFECTS: dict[str, list[tuple]] = {
     ],
     "atmosphere": [(k, "kenburns", {"atmosphere": k}) for k in
                    ("rain", "snow", "embers", "fog", "blood", "petals", "leaves", "wind")],
-    # look post-passes (apply on any clip via Scene.fx)
-    "fx": [(k, "static", {"fx": [k]}) for k in
-           ("grain", "vignette", "chroma", "glitch", "sunrise", "godrays",
+    # look post-passes (apply on any clip via Scene.fx). Demo over a Ken-Burns base so the
+    # motion is obvious — the temporal parts (grain shimmer, oldfilm flicker, glitch noise,
+    # godrays sway) read much better against a slowly moving frame than a frozen one.
+    "fx": [(k, "kenburns", {"fx": [k]}) for k in
+           ("grain", "vignette", "chroma", "glitch", "sunrise", "godrays", "oldfilm",
             "flash-white", "flash-yellow", "flash-red", "flash-black")],
     "slice": [
         ("diag", "slice", {"motion_hint": ""}),
@@ -70,11 +105,24 @@ EFFECTS: dict[str, list[tuple]] = {
         ("single", "blurred-parallax", {"__src__": "sample_scene.png", "motion_hint": "single right"})],
     "motion": [(f"{p}", f"motion-{p}", {}) for p in
                ("driftright", "driftleft", "driftup", "driftdown", "zoomin", "zoomout")],
-    "kinetic": [("headline", "kinetic", {"on_screen_text": "WATCH THIS"})],
+    "kinetic": [
+        ("headline", "kinetic", {"on_screen_text": "WATCH THIS"}),
+        ("stat", "kinetic", {"on_screen_text": "50x MORE VIEWS"}),
+    ],
     "static": [("hold", "static", {})],
-    "manim": [("sunrise", "manim", {"manim_code": _SUN})],
+    "manim": [
+        ("sunrise", "manim", {"manim_code": _SUN}),
+        ("morph", "manim", {"manim_code": _MORPH}),
+        ("sine", "manim", {"manim_code": _SINE}),
+        ("orbit", "manim", {"manim_code": _ORBIT}),
+        ("bars", "manim", {"manim_code": _BARS}),
+        ("spiral", "manim", {"manim_code": _SPIRAL}),
+    ],
+    # one clean portrait demo. mouth_xy 3rd value scales the sprite; a big, clearly-visible
+    # mouth reads best on this small-headed figure. (Auto-detect + other faces exist in code;
+    # lip-sync is most reliable on a clear closed-mouth portrait, so we keep the demo to that.)
     "talkinghead": [
-        ("lipsync", "talkinghead", {"__src__": "sample_person.png", "mouth_xy": [0.5, 0.26]},
+        ("lipsync", "talkinghead", {"__src__": "sample_person.png", "mouth_xy": [0.5, 0.27, 0.13]},
          "Hey! Watch how my mouth moves while I talk to you."),
     ],
     # scene-to-scene transitions (rendered specially: two stills xfaded — see __transition__)

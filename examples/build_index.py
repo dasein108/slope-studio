@@ -47,7 +47,8 @@ DESCRIPTIONS = {
     "manim": "Vector animation (sun rises, shapes, morphs, kinetic type) — for "
              "educational/diagram scenes.",
     "talkinghead": "2D lip-sync — static face, the mouth moves with the narration "
-                   "(Rhubarb visemes → mouth-sprite swap).",
+                   "(Rhubarb visemes → mouth-sprite swap). Mouth position + size via mouth_xy "
+                   "(or LLM auto-detected). Best on a clear closed-mouth portrait.",
 }
 
 CSS = """

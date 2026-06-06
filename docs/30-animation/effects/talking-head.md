@@ -71,14 +71,22 @@ because Rhubarb resolves the symlink to find its `res/` folder (verified).
   "visual_prompt": "<character>, head-and-shoulders portrait, mouth closed, facing camera",
   "narration": "And that is why the cat always lands on its feet.",
   "animator": "talkinghead",
-  "mouth_xy": [0.5, 0.62],          // mouth anchor as fractions of the frame (x, y)
+  "mouth_xy": [0.5, 0.62, 0.18],    // mouth anchor (x, y) + optional width, all fractions
   "mouth_set": "pols-narrator"      // optional: assets/mouths/pols-narrator/{A..X}.png
 }
 ```
 
-- **`mouth_xy`** — where the mouth sits on YOUR face still (fractions 0–1). Default
-  `[0.5, 0.6]`. **Tune this per character** — there's no face detection, so the anchor is a
-  guess until you set it. Grab a frame and adjust.
+- **`mouth_xy`** — where the mouth sits on YOUR face still, as fractions 0–1: `[x, y]` or
+  `[x, y, width]`. The optional **3rd value scales the mouth sprite** to that fraction of the
+  frame width, so the mouth matches the face's size (default width `0.18`).
+- **Auto-detection (LLM):** any of `x` / `y` / `width` you leave out is filled in by a
+  vision LLM that locates the mouth on the actual rendered face (`animate._detect_mouth` →
+  `llm.vision_json`, Gemini by default). So you can omit `mouth_xy` entirely and it'll try to
+  place + size the mouth for you. It's best-effort — on clear human/portrait faces it's
+  usually good; on small or stylized cartoon/animal faces it can land off, so **pin
+  `mouth_xy` explicitly when you need precision** (the manifest note shows `+llm-mouth` when
+  detection ran). Detection failures (no key, bad output) fall back to your anchor or the
+  `[0.5, 0.6, 0.18]` default — lip-sync never breaks.
 - **`mouth_set`** — name of a sprite set under `assets/mouths/<set>/`. Omit for the drawn
   cartoon default.
 - Generate the face with a **closed mouth** ("mouth closed" in the prompt) so the open

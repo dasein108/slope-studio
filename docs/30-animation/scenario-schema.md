@@ -41,7 +41,7 @@ Authoritative reference for authoring a scenario (by hand or LLM). The pipeline
   // --- presentation (all optional; see docs/30-animation/) ---
   "animator": "kenburns",       // kenburns | motion-driftright|driftleft|driftup|driftdown|zoomin|zoomout|pulse | kinetic | parallax | blurred-parallax | slice | static | puppet | talkinghead | manim
   "atmosphere": "",             // optional weather/particle overlay post-pass: rain|snow|embers|blood|petals|leaves|wind|fog (atmosphere.md). Composites on ANY animator.
-  "fx": [],                     // optional look post-passes (after atmosphere), applied in order: grain|vignette|chroma|glitch|sunrise|sunset|godrays|flash[-white|-yellow|-red|-black] (effects/ffmpeg-recipes.md)
+  "fx": [],                     // optional look post-passes (after atmosphere), applied in order: grain|vignette|chroma|glitch|sunrise|sunset|godrays|oldfilm|flash[-white|-yellow|-red|-black] (effects/ffmpeg-recipes.md)
   "transition": "cut",          // into this scene: cut|fade|fadeblack|dissolve|wipeleft|wiperight|wipeup|wipedown|slideleft|slideright|slideup|slidedown|smoothleft|smoothright|circleopen|circleclose|radial|pixelize|zoomin
   "transition_dur": 0.4,        // seconds (0 -> default 0.4)
   "manim_code": "",             // only for animator:"manim" — body of construct() (see manim.md)

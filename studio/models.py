@@ -45,7 +45,7 @@ class Scene(BaseModel):
     manim_code: str = ""        # optional Manim Scene body for animator=manim (docs/30-animation/manim.md)
     # --- talking-head lip-sync (animator=talkinghead; docs/30-animation/effects/talking-head.md) ---
     mouth_set: str = ""         # sprite set under assets/mouths/<set>/ (A..H,X .png); "" -> drawn default
-    mouth_xy: list[float] = Field(default_factory=list)  # [x_frac, y_frac] mouth anchor on the face (0-1); "" -> [0.5, 0.6]
+    mouth_xy: list[float] = Field(default_factory=list)  # [x,y] or [x,y,width] mouth anchor+size frac (0-1); omitted fields -> LLM auto-detect; default [0.5,0.6,0.18]
     limbs: list[Limb] = Field(default_factory=list)  # animator=puppet: per-limb joint rotation (hand up/wave); effects/puppet.md
     sfx: list[SoundCue] = Field(default_factory=list)  # sound effects to lay over this scene
 

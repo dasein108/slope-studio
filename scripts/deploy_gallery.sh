@@ -24,6 +24,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# pick a python: project venv → python3 → python
+if [ -x "$ROOT/.venv/bin/python" ]; then PYTHON="$ROOT/.venv/bin/python"
+elif command -v python3 >/dev/null; then PYTHON="$(command -v python3)"
+else PYTHON="$(command -v python)"; fi
+
 BRANCH="gh-pages"
 OUT="examples/out"
 BUILD="$ROOT/.ghp-build"
@@ -39,9 +44,9 @@ command -v ffmpeg >/dev/null || { echo "ERROR: ffmpeg not on PATH." >&2; exit 1;
 echo "==> 1/3  Rebuilding gallery index.html"
 if [ "${RENDER:-0}" = "1" ]; then
     echo "    RENDER=1 — re-rendering ALL effects (slow)…"
-    python examples/make_examples.py
+    "$PYTHON" examples/make_examples.py
 fi
-python examples/build_index.py   # scans $OUT, regenerates index.html
+"$PYTHON" examples/build_index.py   # scans $OUT, regenerates index.html
 
 echo "==> 2/3  Staging into $BUILD (recompressing clips > $((THRESH_BYTES/1024/1024)) MB)"
 rm -rf "$BUILD"

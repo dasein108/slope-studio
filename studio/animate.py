@@ -130,22 +130,20 @@ def _inpaint_subject(image: Path, mask, iters: int = 18, radius: int = 28):
 
 
 def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
-    """Parallax, two modes — chosen by whether a separate BACKGROUND PLATE exists:
+    """TRUE 2.5D parallax: the subject is cut out (`rembg`) and held STATIC + sharp in front
+    while a background plane DRIFTS behind it (foreground stays put, background moves).
 
-    1. **Default (no plate)** — a CLEAN full-image lateral PAN of the whole still (a camera
-       move). No cut-out, no inpaint, no second plane → it can NEVER shear/ghost/hole. This
-       is the cheap-safe default; it's what `animator:"parallax"` does unless a plate was
-       generated. (The old auto rembg-cut-out path was removed: on a subjectless still rembg
-       grabs a fake "subject", freezes the centre, and leaves a moving hole around it.)
+    The drifting plane comes from one of two sources:
+    1. **Pre-generated plate** — a separate `scene_NN_bg.png` (the scene re-generated with the
+       subject removed). Best quality; made on balanced+ tiers via `studio visuals
+       --parallax-plates`.
+    2. **Auto-inpaint (no plate)** — the same still with the subject erased on the fly
+       (`_inpaint_subject`, blur-diffusion). The inpaint FILLS the subject hole, so the
+       drifting plane has no moving hole or ghost twin. Great on smooth backgrounds (sky).
 
-    2. **Layered (plate present)** — TRUE 2.5D from TWO genuinely different images: the
-       subject is cut out (`rembg`) from the main still and held STATIC + sharp, while the
-       SEPARATE `scene_NN_bg.png` plate (the same scene generated with the subject removed)
-       drifts behind it. No inpaint, so no holes. Generated for parallax scenes on
-       balanced+ tiers (`studio visuals --parallax-plates`). If the subject can't be cleanly
-       cut (implausible coverage), it falls back to the safe pan.
-
-    `motion_hint`: 'left'/'right'/'up'/'down' sets the drift (default right).
+    Both are gated by subject coverage (~6–55%): if there's no clean separable subject it
+    falls back to a safe full-image PAN (never shears/holes). `motion_hint`:
+    'left'/'right'/'up'/'down' sets the drift (default right).
     See docs/30-animation/parallax.md and the parallax rule in film-maker-guides.md."""
     w, h = canvas.W, canvas.H
     hint = (scene.motion_hint or "").lower()
@@ -153,25 +151,44 @@ def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
                  else "down" if "down" in hint else "right")
     pan = {"left": "driftleft", "right": "driftright", "up": "driftup", "down": "driftdown"}[direction]
 
-    plate = image.with_name(image.stem + "_bg.png")        # separate background plate?
-    if plate.exists():
-        try:
-            import numpy as np
-            from rembg import remove
-            from PIL import Image, ImageOps
-            src = ImageOps.fit(Image.open(image).convert("RGBA"), (w, h))
-            cut = remove(src)
-            cov = float((np.asarray(cut.split()[-1], dtype=np.uint8) > 32).mean())
-            if 0.06 <= cov <= 0.55:                        # a plausible separable subject
-                fg = dst.with_name(dst.stem + "_fg.png")
-                cut.save(fg)
-                ffmpeg.parallax_drift(plate, fg, dst, seconds, direction=direction)
-                fg.unlink(missing_ok=True)
-                return f"parallax (layered, separate bg plate; subject {cov:.0%})"
-        except Exception:
-            pass  # any failure → safe pan below
+    # TRUE parallax: cut the subject (rembg), hold it STATIC + sharp in front, and drift a
+    # background plane behind it. The plane is either a pre-generated `_bg.png` plate (best)
+    # or, when none exists, the same still with the subject INPAINTED OUT on the fly — the
+    # inpaint fills the hole, so the drifting plane has no moving hole/ghost. Gated by subject
+    # coverage so a subjectless still (no clean subject) safely falls through to a plain pan.
+    plate = image.with_name(image.stem + "_bg.png")        # optional pre-generated bg plate
+    tmp_bg = None
+    try:
+        import numpy as np
+        from rembg import remove
+        from PIL import Image, ImageOps
+        src = ImageOps.fit(Image.open(image).convert("RGBA"), (w, h))
+        cut = remove(src)
+        alpha = cut.split()[-1]
+        cov = float((np.asarray(alpha, dtype=np.uint8) > 32).mean())
+        if 0.06 <= cov <= 0.55:                            # a plausible separable subject
+            fg = dst.with_name(dst.stem + "_fg.png")
+            cut.save(fg)
+            if plate.exists():
+                bg, note = plate, f"parallax (layered plate; subject {cov:.0%})"
+            else:
+                fitted = dst.with_name(dst.stem + "_fit.png")
+                src.convert("RGB").save(fitted)
+                tmp_bg = dst.with_name(dst.stem + "_bg.png")
+                _inpaint_subject(fitted, alpha).save(tmp_bg)   # erase subject → drift plane
+                fitted.unlink(missing_ok=True)
+                bg, note = tmp_bg, f"parallax (auto-inpaint; subject {cov:.0%})"
+            ffmpeg.parallax_drift(bg, fg, dst, seconds, direction=direction)
+            fg.unlink(missing_ok=True)
+            if tmp_bg:
+                tmp_bg.unlink(missing_ok=True)
+            return note
+    except Exception:
+        if tmp_bg:
+            tmp_bg.unlink(missing_ok=True)
+        pass  # any failure → safe pan below
 
-    # Default / fallback: clean full-image lateral pan — bulletproof, never holes/tears.
+    # Fallback: clean full-image lateral pan — bulletproof, never holes/tears.
     ffmpeg.motion(image, dst, seconds, preset=pan)
     return f"parallax->pan ({direction})"
 
@@ -369,6 +386,31 @@ def _puppet(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
         shutil.rmtree(work, ignore_errors=True)
 
 
+def _detect_mouth(image: Path) -> dict | None:
+    """LLM-vision mouth locator → {cx, cy, w} as fractions of the image (mouth center +
+    width), or None if unavailable. Works on human, cartoon, or animal faces — the model
+    is told to find "the mouth" regardless. Any failure (no key, bad JSON, network) returns
+    None so the caller falls back to an explicit anchor or a sane default; lip-sync never
+    breaks just because detection is offline."""
+    import json as _json
+
+    try:
+        from studio.providers import llm
+        system = "You locate a single face's mouth so a lip-sync mouth sprite can be overlaid."
+        user = (
+            "Find THE MOUTH in this image (human, cartoon, or animal — whichever face is "
+            "present). Respond with ONLY JSON: "
+            '{"cx": <mouth center x, 0-1 of width>, "cy": <mouth center y, 0-1 of height>, '
+            '"w": <mouth width as a fraction of image width, 0-1>}.')
+        d = _json.loads(llm.vision_json(image, system, user))
+        cx, cy, w = float(d["cx"]), float(d["cy"]), float(d["w"])
+        if 0.0 <= cx <= 1.0 and 0.0 <= cy <= 1.0 and 0.02 <= w <= 0.9:
+            return {"cx": cx, "cy": cy, "w": w}
+    except Exception:
+        return None
+    return None
+
+
 def _talkinghead(scene: Scene, image: Path, dst: Path, seconds: float,
                  audio: Path | None) -> str:
     """Tier-2 2D lip-sync: Rhubarb turns the scene narration into a mouth-shape
@@ -404,8 +446,34 @@ def _talkinghead(scene: Scene, image: Path, dst: Path, seconds: float,
         cues = json.loads(cues_path.read_text()).get("mouthCues", [])
 
         face = ImageOps.fit(Image.open(image).convert("RGBA"), (w, h))
-        ax, ay = (scene.mouth_xy or [0.5, 0.6])[:2]       # mouth anchor as fractions
+
+        # Mouth placement + SIZE. Explicit scene.mouth_xy wins (3rd element = width frac);
+        # any unset field is auto-detected by an LLM looking at the actual fitted face, so
+        # the sprite lands on the real mouth at the right scale instead of a guessed anchor.
+        mx = scene.mouth_xy or []
+        ax = mx[0] if len(mx) >= 1 else None
+        ay = mx[1] if len(mx) >= 2 else None
+        mw = mx[2] if len(mx) >= 3 else None
+        det_note = ""
+        if ax is None or ay is None or mw is None:
+            probe = work / "face_probe.png"
+            face.convert("RGB").save(probe)
+            det = _detect_mouth(probe)
+            if det:
+                ax = det["cx"] if ax is None else ax
+                ay = det["cy"] if ay is None else ay
+                mw = det["w"] if mw is None else mw
+                det_note = " +llm-mouth"
+        ax = 0.5 if ax is None else ax
+        ay = 0.6 if ay is None else ay
+        mw = 0.18 if mw is None else mw
+
         sprites = _load_mouth_sprites(scene.mouth_set or "default")
+        target_w = max(8, int(round(mw * w)))            # mouth width relative to the image
+        def _scale(sp):
+            th = max(1, round(sp.height * target_w / sp.width))
+            return sp.resize((target_w, th), Image.LANCZOS)
+        sprites = {k: _scale(v) for k, v in sprites.items()}
 
         def shape_at(t: float) -> str:
             for c in cues:
@@ -420,7 +488,7 @@ def _talkinghead(scene: Scene, image: Path, dst: Path, seconds: float,
             frame.alpha_composite(sp, (int(ax * w - sp.width / 2), int(ay * h - sp.height / 2)))
             frame.convert("RGB").save(work / f"f_{i:05d}.png")
         ffmpeg.frames_to_video(str(work / "f_%05d.png"), dst, fps=fps)
-        return f"talkinghead ({len(cues)} cues, set={scene.mouth_set or 'default'})"
+        return f"talkinghead ({len(cues)} cues, set={scene.mouth_set or 'default'}{det_note})"
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -443,13 +511,22 @@ _MANIM_DEFAULT = '''        title = Text({title!r}, font_size=56, weight=BOLD).t
 
 
 def _manim(scene: Scene, dst: Path, seconds: float) -> str:
+    import importlib.util
     import shutil
     import subprocess
+    import sys
     import tempfile
 
     import textwrap
 
-    if not shutil.which("manim"):
+    # Prefer the importable package (resolves inside a venv regardless of PATH), invoked
+    # as `python -m manim`; fall back to a `manim` CLI on PATH. This is why the demo could
+    # render manim with the package pip-installed but no `manim` binary on PATH.
+    if importlib.util.find_spec("manim") is not None:
+        manim_cmd = [sys.executable, "-m", "manim"]
+    elif shutil.which("manim"):
+        manim_cmd = ["manim"]
+    else:
         raise RuntimeError("manim not installed (pip install manim)")
     raw = scene.manim_code if scene.manim_code else \
         _MANIM_DEFAULT.format(title=(scene.on_screen_text or "")[:40])
@@ -462,7 +539,7 @@ def _manim(scene: Scene, dst: Path, seconds: float) -> str:
     src.write_text(_MANIM_TEMPLATE.format(body=body))
     media = src.parent / "media"
     subprocess.run(
-        ["manim", "render", "-qm", "--format", "mp4", "--fps", "30",
+        [*manim_cmd, "render", "-qm", "--format", "mp4", "--fps", "30",
          "--resolution", f"{canvas.W},{canvas.H}", "--media_dir", str(media), str(src),
          "StudioScene"],
         capture_output=True, text=True, check=True, timeout=600,

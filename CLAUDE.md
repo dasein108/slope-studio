@@ -48,7 +48,7 @@ studio/
   animate.py        free animators dispatch: kenburns|motion-*|kinetic|parallax|blurred-parallax|slice|static|puppet|talkinghead|manim
                     parallax = static subject + REAL bg drift (subject inpainted out); blurred-parallax = old blurred panning planes
                     + atmosphere overlay post-pass (rain|snow|embers|blood|petals|leaves|wind|fog)
-                    + fx look post-pass (Scene.fx): grain|vignette|chroma|glitch|sunrise|sunset|godrays|flash[-white|-yellow|-red|-black]
+                    + fx look post-pass (Scene.fx): grain|vignette|chroma|glitch|sunrise|sunset|godrays|oldfilm|flash[-white|-yellow|-red|-black]
                     puppet = rembg cutout figure motion (idle/hop/shake/nod head)
                     talkinghead = Rhubarb 2D lip-sync (mouth sprites on a static face)
   tiers.py          tier presets (free/cheap/balanced/premium) → providers + strategy
@@ -168,7 +168,7 @@ Chosen by which keys are present in `.env`, else free fallback:
 - **`--max-cost` is the WHOLE-video budget (images + clips + music).** `studio run` reserves the music-bed cost (`audio.expected_music_cost`: `fal-stable-audio` = $0.20, all free providers = $0) BEFORE the clips stage, so clips can't eat the room music needs; if a paid bed still won't fit what's left, music **auto-downgrades to `local`** (free; silence if no packs) with a note. Cost ladder for a ~50s short (Nano Banana stills): paid music + 10s ltx ≈ $0.78 → music-in-budget caps it to **~$0.61** (6s hook + bed) at `--max-cost 0.70` → free music + 6s ltx ≈ $0.41 → free music + free `motion-*` only ≈ $0.17. **Biggest levers: the music bed ($0.20 → free `local`/`freesound`) and hook clip length (10s $0.40 → 6s $0.24, or free `motion-*`).** sfx is ~$0.002/s — negligible, not reserved.
 - Don't hardcode secrets; read via `config.env()`. `.env`, `runs/`, `token.json`, `client_secret*.json` are gitignored.
 - Commit only when the user asks.
-- **All per-video build scripts live in `builds/`** (e.g. `builds/build_before_the_law.py`, `builds/build_first_sorrow.py`). These are one-off generators that author a `runs/<id>/01_script.json` by hand — they are NOT part of the `studio` package and shouldn't sit at repo root. Keeping them in `builds/` keeps the root clean, makes the back-catalog of authored videos discoverable in one place, and separates throwaway authoring scripts from the reusable pipeline code. Run them from repo root so their relative `runs/<id>/` output paths resolve (`python builds/build_first_sorrow.py`).
+- **Per-video build scripts MUST live in `builds/`, never at repo root.** Any `build_*.py` (one-off generators that author a `runs/<id>/01_script.json` by hand) goes in `builds/build_<slug>.py`. They are NOT part of the `studio` package — keeping them out of root keeps it clean and makes the back-catalog of authored videos discoverable in one place. **When creating a new one, write it straight into `builds/`; if you ever find a `build_*.py` at repo root, move it into `builds/` (it's a mistake).** Run them from repo root so their relative `runs/<id>/` output paths resolve: `python builds/build_<slug>.py`. See [`builds/README.md`](builds/README.md).
 
 ## Known gotchas (learned, still true)
 

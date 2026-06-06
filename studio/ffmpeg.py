@@ -404,6 +404,7 @@ def atmosphere(clip: Path, layer_png: Path, dst: Path, kind: str, seconds: float
 def post_fx(src: Path, dst: Path, name: str, seconds: float, w: int = 0, h: int = 0) -> None:
     """Apply a free 'look' post-pass filter to a rendered clip (in place; supports
     src==dst). Names: grain · vignette · chroma · glitch · sunrise · sunset · godrays ·
+    oldfilm (vintage sepia + grain + flicker) ·
     flash[-white|-yellow|-red|-black] (impact colour punch that fades back to normal).
     Verified on this ffmpeg build (no drawtext/libass needed). effects/ffmpeg-recipes.md."""
     w, h = w or canvas.W, h or canvas.H
@@ -446,6 +447,13 @@ def post_fx(src: Path, dst: Path, name: str, seconds: float, w: int = 0, h: int 
         ramp = f"0.08-0.06*t/{d:.3f}" if n == "sunset" else f"0.02+0.06*t/{d:.3f}"
         fc = (f"[0:v]colorbalance=rs=0.1:gs=0.02:bs=-0.12:rm=0.15:bm=-0.1,"
               f"eq=brightness='{ramp}':saturation='1.0+0.25*t/{d:.3f}',vignette=PI/6[v]")
+    elif n in ("oldfilm", "old-film", "vintage"):
+        # vintage film: sepia tone (colorchannelmixer) + lifted contrast + lower saturation
+        # + temporal grain + a brightness flicker (the projector-gate wobble) + heavy
+        # vignette. All stock filters — no overlay assets needed.
+        fc = ("[0:v]colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131,"
+              "eq=contrast=1.12:saturation=0.82:brightness='0.035*sin(27*t)+0.025*sin(11*t)',"
+              "noise=alls=22:allf=t,vignette=PI/4[v]")
     elif n in ("godrays", "lightrays"):
         # build neutral-white shafts on a GRAY plane, convert to RGB, screen-blend in RGB
         # (screen in yuv420p shifts the chroma planes → colour cast).
