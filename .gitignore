@@ -24,6 +24,10 @@ token*.json
 # --- Pipeline output / raw materials (never in git) ---
 runs/
 
+# --- Per-video build scripts: local one-off generators (keep only the convention README) ---
+builds/*
+!builds/README.md
+
 # Generated effects gallery (built by examples/build_index.py from gitignored clips)
 /index.html
 examples/out/
