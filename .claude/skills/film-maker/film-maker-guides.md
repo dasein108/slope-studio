@@ -354,11 +354,18 @@ Audio is a real stage (`studio audio`, between `stitch` and `voice`; mixed/ducke
 - **Weather/atmosphere = the `atmosphere` field (wired) + ART + SOUND.** Set
   `scene.atmosphere` to `rain|snow|embers|blood|petals|wind|fog` → a free transparent
   particle layer composites over the clip (any animator). It's alpha-`overlay`, so the
-  painted art stays intact — NOT the old screen-blend of ffmpeg noise (which washed
-  the frame and was removed). See [`atmosphere.md`](../../../docs/30-animation/atmosphere.md).
-  Also describe the weather in the `visual_prompt` (so the still reads wet/foggy) and
-  add the matching SFX — art + overlay + sound together sell it. Keep it tasteful: one
-  kind per scene, default opacity, e.g. `rain` as a throughline, `blood` only on the kill.
+  painted art stays intact. See [`atmosphere.md`](../../../docs/30-animation/atmosphere.md).
+- **⚠️ Atmosphere is OPT-IN by literal content — default OFF.** Set it ONLY when the
+  scene actually depicts that element: snow in an outdoor winter shot, embers for real
+  fire, rain in real rain, petals/leaves outdoors among blossom, fog for real mist.
+  **Never** add particles to an indoor, portrait, studio, diagram, or neutral scene, and
+  never "for mood" or decoration — falling snow in a 1960s office is a bug, not a vibe.
+  Most scenes keep `atmosphere: ""`. When you do use it, describe the weather in the
+  `visual_prompt` too and add matching SFX (art + overlay + sound sell it together), one
+  kind per scene — e.g. `rain` as a throughline, `blood` only on the kill.
+- **fx restraint:** pick ONE coherent look for the whole video (e.g. `grain`+`vignette`,
+  or `oldfilm`) and apply it consistently — don't sprinkle a different fx on every scene.
+  `godrays` needs a real light source; never `chroma`/`glitch` on a calm/realistic piece.
 
 ## 12. Pacing & variety checklist (run before rendering)
 

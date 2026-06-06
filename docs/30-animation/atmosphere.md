@@ -4,6 +4,14 @@ A free weather/particle layer composited **on top of the already-rendered clip**
 so it works with ANY animator (parallax, slice, static, kinetic, drift…). Set the
 scene field `atmosphere`; the rest is automatic.
 
+> ⚠️ **Use it ONLY when the scene literally depicts that element.** `atmosphere`
+> defaults to `""` and the **vast majority of scenes must keep it empty**. Snow only in
+> an outdoor winter scene, embers only for real fire, rain only in actual rain,
+> petals/leaves only outdoors among blossom, fog only for real mist. **Never** add
+> particles to an indoor, portrait, studio, diagram, or neutral scene, and never "for
+> mood" or decoration — falling snow in an office (or embers in a tidy room) is a bug,
+> not a vibe. When in doubt, leave it empty.
+
 ```json
 {"id": 1, "animator": "kinetic", "atmosphere": "rain", "visual_prompt": "...", "narration": "..."}
 ```

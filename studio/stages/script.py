@@ -42,11 +42,19 @@ fills anything you omit, so only set what clearly fits, and VARY it across scene
   big on-screen HEADLINE — use ONLY on the opening hook or a scene built around short text)
   · slice (a split-and-slide reveal at a hard cut) · static (a held shot — good for an
   outro/CTA). Spread these out; don't repeat one animator every scene.
-- "atmosphere" (one weather/particle overlay, only when the scene calls for it):
-  rain · snow · embers · blood · petals · leaves · wind · fog. Omit for most scenes.
-- "fx" (0-2 colour/look post-passes, sparingly): grain · vignette · oldfilm (vintage film)
-  · godrays · sunrise · sunset · chroma · glitch · flash-white/yellow/red/black (a brief
-  impact punch for an action/violence beat). Use to set MOOD, not as decoration.
+- "atmosphere" (a weather/particle overlay): rain · snow · embers · blood · petals ·
+  leaves · wind · fog. **DEFAULT IS "" (none). Set it ONLY when the scene literally
+  depicts that element** — snow only if it's an outdoor winter/snow scene, embers only
+  for actual fire, rain only in real rain, petals/leaves only outdoors among blossom/trees,
+  fog only for real mist. NEVER add particles to an indoor, portrait, studio, diagram, or
+  neutral scene, and NEVER for "mood" or decoration. Falling snow in an office is a bug.
+  The vast majority of scenes MUST have atmosphere "".
+- "fx" (0-2 colour/look post-passes, used sparingly and consistently): grain · vignette ·
+  oldfilm (vintage film) · godrays (warm light shafts — only with a real light source) ·
+  sunrise · sunset · chroma · glitch · flash-white/yellow/red/black (a brief impact punch
+  for an action/violence beat). Pick ONE coherent look for the whole video and apply it
+  consistently; don't sprinkle different fx per scene. Default to none unless it serves the
+  look. Never use chroma/glitch on a calm/period/realistic piece.
 - "transition" (into this scene): cut · fade · dissolve · wipeleft · slideup · circleopen.
   Omit to let the pipeline choose."""
 

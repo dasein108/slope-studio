@@ -40,8 +40,8 @@ Authoritative reference for authoring a scenario (by hand or LLM). The pipeline
 
   // --- presentation (all optional; see docs/30-animation/) ---
   "animator": "kenburns",       // kenburns | motion-driftright|driftleft|driftup|driftdown|zoomin|zoomout|pulse | kinetic | parallax | blurred-parallax | slice | static | puppet | talkinghead | manim
-  "atmosphere": "",             // optional weather/particle overlay post-pass: rain|snow|embers|blood|petals|leaves|wind|fog (atmosphere.md). Composites on ANY animator.
-  "fx": [],                     // optional look post-passes (after atmosphere), applied in order: grain|vignette|chroma|glitch|sunrise|sunset|godrays|oldfilm|flash[-white|-yellow|-red|-black] (effects/ffmpeg-recipes.md)
+  "atmosphere": "",             // DEFAULT "". weather/particle overlay: rain|snow|embers|blood|petals|leaves|wind|fog. Set ONLY when the scene LITERALLY depicts it (real snow/rain/fire/fog outdoors). NEVER on indoor/portrait/studio/diagram/neutral scenes or for "mood". Snow in an office is a bug. (atmosphere.md)
+  "fx": [],                     // look post-passes (after atmosphere): grain|vignette|chroma|glitch|sunrise|sunset|godrays|oldfilm|flash[-white|-yellow|-red|-black]. Pick ONE coherent look for the whole video; don't sprinkle different fx per scene. godrays needs a real light source; chroma/glitch never on calm/realistic pieces. (effects/ffmpeg-recipes.md)
   "transition": "cut",          // into this scene: cut|fade|fadeblack|dissolve|wipeleft|wiperight|wipeup|wipedown|slideleft|slideright|slideup|slidedown|smoothleft|smoothright|circleopen|circleclose|radial|pixelize|zoomin
   "transition_dur": 0.4,        // seconds (0 -> default 0.4)
   "manim_code": "",             // only for animator:"manim" — body of construct() (see manim.md)
