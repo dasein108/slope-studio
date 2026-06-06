@@ -69,7 +69,7 @@ def reflect(j: jrnl.Journal, provider: str) -> str:
     phase = "cold-start" if j.in_cold_start else "optimizing"
     if not provider or provider == "stub":
         _fallback(j)
-        j.strategy.updated_at = jrnl._now()
+        j.strategy.updated_at = j.last_learn_at = jrnl._now()
         return f"updated strategy from {len(measured)} videos (heuristic, no LLM)"
     table = "\n".join(_row(e) for e in measured)
     user = USER_TMPL.format(niche=j.strategy.niche or "(unset)", phase=phase,
@@ -81,7 +81,7 @@ def reflect(j: jrnl.Journal, provider: str) -> str:
         s.losing_patterns = data.get("losing_patterns") or s.losing_patterns
         s.current_direction = data.get("current_direction") or s.current_direction
         s.next_seeds = data.get("next_seeds") or s.next_seeds
-        s.updated_at = jrnl._now()
+        s.updated_at = j.last_learn_at = jrnl._now()
         for eid, note in (data.get("entry_learnings") or {}).items():
             e = j.get(eid)
             if e:
@@ -89,5 +89,5 @@ def reflect(j: jrnl.Journal, provider: str) -> str:
         return f"strategy updated from {len(measured)} videos via {provider}"
     except Exception as e:
         _fallback(j)
-        j.strategy.updated_at = jrnl._now()
+        j.strategy.updated_at = j.last_learn_at = jrnl._now()
         return f"heuristic fallback (LLM failed: {str(e)[:60]})"
