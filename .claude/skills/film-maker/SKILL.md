@@ -75,6 +75,29 @@ studio init "topic" --aspect 16:9                  # then drive stages; aspect l
 - ⚠️ Length note: a 9:16 ≤180s upload is a *Short*; anything longer (or any 16:9) is a regular
   YouTube **video**, not a Short. Long landscape readings are fine — just not "Shorts".
 
+## 1.6 Preview thumbnail — REQUIRED for long-form (the Kafka style)
+
+Shorts don't need a custom thumbnail (the vertical frame IS the preview). But for **every
+long-form / landscape video** (the literary readings), generate a preview BEFORE publishing
+so the channel keeps one consistent, recognizable look:
+
+```bash
+studio thumbnail <id> --author "Franz Kafka" --title "Before the Law" --at 8
+#   omit --title/--author to auto-derive them from 06_final.json metadata / topic
+studio publish <id> --target youtube --channel <name>   # auto-uploads 06_thumb.png if present
+```
+
+This writes `06_thumb.png` (1280×720) in the **canonical style** — modeled on the Kafka set
+(*Before the Law · An Imperial Message · First Sorrow*): a darkened hero frame, a short **HOOK
+caption** top-left, the **AUTHOR** in gold, a gold **accent bar**, then the big white **TITLE**
+bottom-left (`cardgen.thumbnail`). **Keep every long-form preview in this one style** so the
+series reads as a matched set:
+- Same layout every time: AUTHOR (gold) + accent bar + TITLE, with a one-line hook on top.
+- Pick a strong, legible hero frame with `--at <seconds>` (a clear subject, not a transition).
+- Title ≤4 words; use the real author's name; let the hook tease, not spoil.
+- `studio publish` (and `studio run --publish-to`) auto-attach `06_thumb.png` — so just run
+  `studio thumbnail` first; if you skip it, YouTube auto-picks a random frame (don't).
+
 ## 2. Produce a whole video (one command) — pick a TIER
 
 `--tier free|cheap|balanced|premium` sets all providers + video strategy. Override any
