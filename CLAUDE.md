@@ -146,9 +146,11 @@ overrides the preset.
 | tier | images | video | ~cost / 150s | use |
 |------|--------|-------|--------------|-----|
 | free | stub (offline) | kenburns | **$0** | wiring/draft |
-| cheap | Nano Banana | kenburns (pan/zoom) | **~$0.59** | budget hero stills |
-| balanced | Nano Banana | **auto** AI within `--max-cost` | **= max-cost** | best per dollar |
-| premium | Nano Banana | AI every scene | $6–10+ | quality first |
+| cheap | **FLUX schnell** (all scenes) | kenburns (pan/zoom) | **~$0.15** | budget stills, no char consistency |
+| balanced | **Nano Banana** hero **+ FLUX** bg | **auto** AI within `--max-cost` | **= max-cost** | best per dollar |
+| premium | **Nano Banana** hero **+ FLUX** bg | AI every scene | $6–10+ | quality first |
+
+**Images per tier** (`tiers.py`): `cheap` renders **every** scene on FLUX schnell (~$0.006/img, no character-reference consistency). `balanced`/`premium` split by `Scene.image_role`: **hero/character** scenes → Nano Banana (quality + char-ref); **`bg`** (backgrounds/overlays) → FLUX schnell (`visuals.py` `cheap_provider`). Override either with `--image-provider` / `--image-cheap-provider`.
 
 Video `--strategy`: `kenburns` (free) · `all` (AI every scene) · `hybrid`
 (`--ai-scenes 1,7,15`) · `auto` (smart: spend the budget on highest-priority scenes,

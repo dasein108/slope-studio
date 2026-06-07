@@ -45,7 +45,7 @@ AI video is billed **per second** — run `studio estimate <id>` before stage 3.
 ```bash
 studio estimate <run-id> --budget 3                 # preview video cost per model
 
-# cheap: Nano Banana stills + free Ken-Burns motion (~$0.59 / 150s)
+# cheap: FLUX-schnell stills (all scenes) + free Ken-Burns motion (~$0.15 / 150s)
 studio run "the chemistry of humor" --duration 150 --tier cheap
 
 # balanced: stills + SMART AI video filling the budget on the best scenes
@@ -58,9 +58,11 @@ studio run "topic" --duration 60 --tier premium --max-cost 0
 | tier | images | video | ~cost / 150s |
 |------|--------|-------|--------------|
 | free | offline stub | kenburns | $0 |
-| cheap | Nano Banana | kenburns (pan/zoom) | ~$0.59 |
-| balanced | Nano Banana | **auto** AI within `--max-cost` | = max-cost |
-| premium | Nano Banana | AI every scene | $6–10+ |
+| cheap | FLUX schnell (all) | kenburns (pan/zoom) | ~$0.15 |
+| balanced | Nano Banana hero + FLUX bg | **auto** AI within `--max-cost` | = max-cost |
+| premium | Nano Banana hero + FLUX bg | AI every scene | $6–10+ |
+
+> Images: `cheap` = all FLUX schnell (~$0.006/img). `balanced`/`premium` use Nano Banana for hero/character scenes and FLUX schnell for `image_role:bg` backgrounds.
 
 Video `--strategy`: `kenburns` · `all` · `hybrid` (`--ai-scenes 1,7,15`) · `auto` (smart fill).
 

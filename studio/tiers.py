@@ -6,9 +6,13 @@ free Ken Burns (see studio/stages/clips.py).
 
 Tiers (cheapest → best):
   free      everything offline/free. No spend, no AI video, no quality images.
-  cheap     real Nano Banana stills + free Ken Burns motion. ~$0.04/scene (images only).
-  balanced  Nano Banana stills + SMART AI video within --max-cost (auto hero scenes).
-  premium   Nano Banana stills + AI video on EVERY scene + best voice. Cost scales per second.
+  cheap     ALL scenes on FLUX schnell stills (~$0.006/img, no char-ref consistency)
+            + free Ken Burns motion.
+  balanced  Nano Banana (hero) + FLUX schnell (bg) stills + SMART AI video within --max-cost.
+  premium   Nano Banana (hero) + FLUX schnell (bg) stills + AI video EVERY scene + best voice.
+
+Image split (balanced/premium): scenes tagged `image_role="bg"` use the cheap model
+(`image_cheap`); hero/character scenes use the quality model (`image`). See visuals.py.
 """
 
 from __future__ import annotations
