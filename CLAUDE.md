@@ -20,20 +20,20 @@ Deep research + architecture rationale lives in [`docs/`](docs/) — start at `d
 | 5 | Voice | `studio voice` | narration → `05_voice/final.mp4` (TTS muxed; captions **off** by default — `--captions burn` to bake in) |
 | 6 | Save | `studio save` | → `06_final.mp4` (platform master) + `06_final.json` meta |
 | 6.5 | Metadata | `studio metadata` | SEO-polish title/description/tags → `06_final.json` (LLM, fallback to script). Auto-runs before publish. |
-| 7 | Publish | `studio publish` | master → YouTube (TikTok audit-gated). Setup: [`docs/40-publishing/youtube.md`](docs/40-publishing/youtube.md) |
+| 7 | Publish | `studio publish` | master → YouTube, or TikTok **inbox draft** (`--target tiktok`). Setup: [`docs/40-publishing/youtube.md`](docs/40-publishing/youtube.md) · [`tiktok.md`](docs/40-publishing/tiktok.md) |
 
 `project.json` is the manifest: per-stage provider, cost, latency, done-flag. `studio status <id>` renders it. Stages are **idempotent** — re-running skips existing output (`--force` on visuals/clips to regenerate).
 
 The **`film-maker` skill** (`.claude/skills/film-maker/`) is the operator playbook — invoke it when asked to produce, run, debug, or observe a video. It documents every stage's commands, providers, and how to inspect artifacts.
 
-The **`marketing-guru` skill** (`.claude/skills/marketing-guru/`) is the growth half: a closed, **self-improving ideate→deploy→measure→learn** loop that picks *what* to make and judges how viral it was. It's backed by a per-channel **journal** (`runs/_marketing/<channel>/journal.json`) and the `studio marketing` CLI sub-app. The loop is decomposed into **per-step lego-block skills** any agent can use alone — `marketing-ideate` (generate bets) · `marketing-deploy` (produce+publish+link) · `marketing-measure-learn` (score virality, then reflect into strategy) — plus **`marketing-autopilot`** (the hands-off scheduled driver, handling the 48–72h measurement-maturation wait). The umbrella **`marketing-guru`** also owns the thin read/pick/report helpers (journal state, backlog pick per the shipped bandit / 60-40 fallback, growth brief) and links the canonical memory model. The **thinking is agent-driven; the CLI commands are I/O helpers.** Deep reference + memory model: [`docs/50-marketing/`](docs/50-marketing/) (start at `README.md`, then `memory.md`, the canonical memory reference); why this shape: [`docs/20-research/self-improving-loop.md`](docs/20-research/self-improving-loop.md). Its **channel-setup lego-block** is the **`youtube-branding` skill** (`.claude/skills/youtube-branding/`) — `studio brand <spec.json>` generates a full brand kit (banner, avatar, transparent video-watermark logo, keywords, description) into `runs/_brand/<slug>/`.
+The **`marketing-guru` skill** (`.claude/skills/marketing-guru/`) is the growth half: a closed, **self-improving ideate→deploy→measure→learn** loop that picks *what* to make and judges how viral it was. It's backed by a per-channel **journal** (`runs/_marketing/<channel>/journal.json`) and the `studio marketing` CLI sub-app. The loop is decomposed into **per-step lego-block skills** any agent can use alone — `marketing-ideate` (generate bets) · `marketing-deploy` (produce+publish+link) · `marketing-measure-learn` (score virality, then reflect into strategy) · `marketing-crosspost` (push the channel's top measured Shorts to TikTok, deduped) — plus **`marketing-autopilot`** (the hands-off scheduled driver, handling the 48–72h measurement-maturation wait). The umbrella **`marketing-guru`** also owns the thin read/pick/report helpers (journal state, backlog pick per the shipped bandit / 60-40 fallback, growth brief) and links the canonical memory model. The **thinking is agent-driven; the CLI commands are I/O helpers.** Deep reference + memory model: [`docs/50-marketing/`](docs/50-marketing/) (start at `README.md`, then `memory.md`, the canonical memory reference); why this shape: [`docs/20-research/self-improving-loop.md`](docs/20-research/self-improving-loop.md). Its **channel-setup lego-block** is the **`youtube-branding` skill** (`.claude/skills/youtube-branding/`) — `studio brand <spec.json>` generates a full brand kit (banner, avatar, transparent video-watermark logo, keywords, description) into `runs/_brand/<slug>/`.
 
 ## Architecture map (where code lives)
 
 ```
 studio/
   cli.py            typer app — every subcommand + `run` chainer + `status`
-                    + `marketing` sub-app: ideate|link|measure|learn|journal|report
+                    + `marketing` sub-app: ideate|link|measure|learn|journal|report|crosspost
                       + helpers add|backlog|recall|strategy|budget|bandit
                       + autonomous tick|autopilot
   config.py         env-key detection → default_provider(stage); free fallbacks
@@ -67,7 +67,8 @@ studio/
     video.py        clips AI: fal-i2v (kling/ltx/wan/hailuo/seedance) + FAL_MODELS prices
     tts.py          voice: edge (SubMaker captions)|openai-tts; synth_scene for narrate
   voices.py         semantic voice (man/woman/cartoon/narrator) + tone -> TTS settings
-    publish.py      youtube | tiktok(stub, audit-gated); _creds(channel, scopes) OAuth
+    publish.py      youtube | tiktok (inbox draft, chunked FILE_UPLOAD, Login Kit OAuth);
+                    _creds(channel, scopes) OAuth
     analytics.py    YouTube stats/comments (Data API) + retention/subs (Analytics API,
                     best-effort) — reuses the publish OAuth token
   marketing/        viral growth loop (marketing-guru skill)
@@ -193,7 +194,7 @@ Chosen by which keys are present in `.env`, else free fallback:
 - **Captions are OFF by default** — YouTube/TikTok auto-generate them and a burned wall of text covers the visuals. `narrate` still writes `captions.srt` (upload as a sidecar). Opt in with `--captions burn`. When burned, `cardgen.caption_strip` is **fill-width wrapped (fewest lines) + font-shrunk to a ~22%-of-H budget + hard height-capped**, overlaid at `H-h-(~0.115*H)`, so the block can NEVER clip top or bottom in any aspect. (Past bug: long 150-char sentence cues rendered at near-full font across 7 lines and overflowed.) See `docs/30-animation/captions.md`.
 - **fal/Nano-Banana blocks overt violence/gore** (bound prisoner, severed head, blood) → returns no media → that scene stubs (1-color 10 KB PNG). Imply violence symbolically; let narration carry it. Rewrite flagged prompts and re-`--force` visuals.
 - **The quality playbook is `.claude/skills/film-maker/film-maker-guides.md`** — read it (and operator preferences) before authoring scenes for a video that must look great.
-- TikTok auto-publish is **private-only until a 2–4 week app audit** (verified) — `publish.py` tiktok raises with that explanation by design.
+- TikTok publishes to the **inbox draft** (`--target tiktok`, scope `video.upload`) — the video lands in the app and you tap Post. Public **direct-post** (`video.publish`) is still gated behind TikTok's ~2-4 week app audit; inbox works unaudited for test users. The `marketing-crosspost` skill / `studio marketing crosspost` pushes the channel's top measured Shorts to TikTok, deduped via `Entry.crossposts`. Setup: [`docs/40-publishing/tiktok.md`](docs/40-publishing/tiktok.md).
 
 ## Roadmap (follow-up tasks)
 
