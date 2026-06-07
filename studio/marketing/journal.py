@@ -71,6 +71,10 @@ class Entry(BaseModel):
     comments_sample: list[str] = Field(default_factory=list)
     learnings: str = ""                   # what this bet taught us (filled by `learn`)
 
+    # cross-posting: platform -> "<iso>|<publish_id>" stamp. Presence = already posted
+    # there, so the crosspost picker never re-uploads the same winner. {} = not yet.
+    crossposts: dict[str, str] = Field(default_factory=dict)
+
 
 class BudgetConfig(BaseModel):
     """Per-channel spend budget. Either a flat cap per video, or a rate per minute of video

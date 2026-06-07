@@ -12,6 +12,7 @@ build/
 .env
 client_secret*.json
 token*.json
+tiktok_token*.json
 
 # --- Instructions (override global ~/.gitignore_global) ---
 !CLAUDE.md
@@ -73,3 +74,5 @@ articles
 
 # README cover (override the global *.png ignore)
 !assets/cover.png
+
+raw

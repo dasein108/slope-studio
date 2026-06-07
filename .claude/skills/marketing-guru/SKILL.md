@@ -34,6 +34,7 @@ alone; this skill is the conductor, and it also owns the thin read/pick/report h
 | 2 | **guru: backlog** | pick the next bet (bandit, 60/40 fallback) | `backlog` · `bandit` |
 | 3 | **marketing-deploy** | produce+publish via film-maker, then link | `studio run` · `link` |
 | 4+5 | **marketing-measure-learn** | score virality, then reflect → strategy (wait 48-72h) | `measure` · `strategy` |
+| 6 | **marketing-crosspost** | push top measured Shorts to TikTok inbox (deduped) | `crosspost` |
 | — | **guru: report** | write the growth brief to disk | `report` |
 | ⟳ | **marketing-autopilot** | run the WHOLE loop on a schedule (deferred-measurement aware) | `tick` · `autopilot` |
 
@@ -52,7 +53,9 @@ done in the skills; the `studio marketing` CLI commands are **helpers** — pure
 4. **marketing-deploy** — produce + publish (film-maker), sized to the per-video budget, then link.
 5. **wait 48-72h+** for watch time to accrue.
 6. **marketing-measure-learn** — score, then reflect into strategy.
-7. Back to 2 — now exploiting what won. **report** *(below)* snapshots the cycle.
+7. **marketing-crosspost** *(optional)* — once winners are measured, cross-post the top ones
+   to TikTok (`studio marketing crosspost --to tiktok`); the operator taps Post in-app.
+8. Back to 2 — now exploiting what won. **report** *(below)* snapshots the cycle.
 
 To run all of this **hands-off on a schedule**, use **marketing-autopilot** — it asks the engine
 what's due each tick (measure / learn / ideate / produce / idle) and does that one action,

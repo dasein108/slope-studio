@@ -1,15 +1,22 @@
-"""Publishing for stage 7. YouTube works for automation; TikTok is audit-gated.
+"""Publishing for stage 7. YouTube auto-publishes; TikTok uploads to the inbox.
 
 Multi-channel: a Google account can own several channels (Brand Accounts). The OAuth
 token is bound to ONE channel (the one picked in the browser consent). Use a named
 `--channel` to keep a separate token per channel (token_<channel>.json) and verify
 which channel a token points at before uploading.
+
+TikTok: inbox upload (FILE_UPLOAD, chunked). The video lands in the creator's TikTok
+notifications/drafts and they finish posting in-app — this works with an UNAUDITED app
+(sandbox/test users), unlike direct public posting which needs the ~2-4 week audit.
 """
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
+
+import httpx
 
 from studio.providers.base import GenResult
 
@@ -71,10 +78,8 @@ def publish(provider: str, video: Path, title: str, description: str,
         vid, ch = _youtube(video, title, description, tags, privacy, channel, thumbnail)
         note = f"https://youtube.com/watch?v={vid}  (channel: {ch})"
     elif provider == "tiktok":
-        raise NotImplementedError(
-            "TikTok Content Posting API forces SELF_ONLY + 5 users/24h until your "
-            "app passes a ~2-4 week audit. See docs/06-stage-publish/README.md."
-        )
+        publish_id = _tiktok_inbox(video, channel)
+        note = f"tiktok inbox: {publish_id} — open the TikTok app to finish posting"
     else:
         raise ValueError(f"unknown publish provider {provider}")
     return GenResult(path=video, latency_s=round(time.time() - t0, 2),
@@ -108,3 +113,99 @@ def _youtube(video: Path, title: str, description: str, tags: list[str],
         except Exception:  # unverified channels can't set thumbnails — don't fail the upload
             pass
     return vid, resp.get("snippet", {}).get("channelTitle", "?")
+
+
+# --------------------------------------------------------------------------- tiktok
+TIKTOK_API = "https://open.tiktokapis.com"
+_TIKTOK_CHUNK = 5 * 1024 * 1024        # 5 MB = TikTok min chunk; used to split bigger files
+
+
+def _tiktok_token_path(channel: str = "") -> Path:
+    return Path(f"tiktok_token_{channel}.json" if channel else "tiktok_token.json")
+
+
+def _tiktok_access_token(channel: str = "") -> str:
+    """Return a valid TikTok access token, refreshing it if expired. Mint the first token
+    with `python scripts/tiktok_auth.py --channel <channel>` (cached at
+    tiktok_token_<channel>.json, gitignored)."""
+    from studio import config
+
+    key = config.env("TIKTOK_CLIENT_KEY")
+    secret = config.env("TIKTOK_CLIENT_SECRET")
+    if not key or not secret:
+        raise RuntimeError("set TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET (TikTok dev app)")
+
+    tok = _tiktok_token_path(channel)
+    if not tok.exists():
+        raise RuntimeError(
+            f"no TikTok token — mint one with: python scripts/tiktok_auth.py --channel {channel}")
+    data = json.loads(tok.read_text())
+    now = time.time()
+    if data.get("expires_at", 0) > now + 60:
+        return data["access_token"]
+    if not data.get("refresh_token"):
+        raise RuntimeError("TikTok token expired without a refresh_token — re-run scripts/tiktok_auth.py")
+
+    resp = httpx.post(
+        f"{TIKTOK_API}/v2/oauth/token/",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        data={"client_key": key, "client_secret": secret,
+              "grant_type": "refresh_token", "refresh_token": data["refresh_token"]},
+        timeout=30,
+    ).json()
+    if "access_token" not in resp:
+        raise RuntimeError(f"TikTok token refresh failed: {resp}")
+    resp["expires_at"] = now + int(resp.get("expires_in", 86400))
+    tok.write_text(json.dumps(resp, indent=2))
+    return resp["access_token"]
+
+
+def _tiktok_inbox(video: Path, channel: str = "") -> str:
+    """Upload a local video to the TikTok inbox (FILE_UPLOAD, chunked). Returns the
+    publish_id. The creator finishes posting in the TikTok app."""
+    token = _tiktok_access_token(channel)
+    size = video.stat().st_size
+    # TikTok rule: when total_chunk_count == 1, chunk_size MUST equal video_size. So only
+    # multi-chunk once the file is big enough for ≥2 full chunks; smaller files go whole.
+    if size < 2 * _TIKTOK_CHUNK:
+        chunk, total_chunks = size, 1
+    else:
+        chunk = _TIKTOK_CHUNK
+        total_chunks = size // chunk  # final PUT absorbs the remainder
+
+    init = httpx.post(
+        f"{TIKTOK_API}/v2/post/publish/inbox/video/init/",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json={"source_info": {"source": "FILE_UPLOAD", "video_size": size,
+                              "chunk_size": chunk, "total_chunk_count": total_chunks}},
+        timeout=30,
+    ).json()
+    if init.get("error", {}).get("code") not in ("ok", None):
+        raise RuntimeError(f"TikTok init failed: {init['error']}")
+    data = init["data"]
+    publish_id, upload_url = data["publish_id"], data["upload_url"]
+
+    timeout = httpx.Timeout(connect=30.0, read=120.0, write=600.0, pool=30.0)
+    with video.open("rb") as fh:
+        for i in range(total_chunks):
+            start = i * chunk
+            # last chunk grabs the rest (handles non-divisible sizes)
+            end = size - 1 if i == total_chunks - 1 else start + chunk - 1
+            fh.seek(start)
+            body = fh.read(end - start + 1)
+            headers = {"Content-Type": "video/mp4", "Content-Length": str(len(body)),
+                       "Content-Range": f"bytes {start}-{end}/{size}"}
+            last_err = None
+            for _ in range(3):  # retry — uploads can hit transient write timeouts
+                try:
+                    put = httpx.put(upload_url, headers=headers, content=body, timeout=timeout)
+                    if put.status_code in (200, 201, 206):
+                        last_err = None
+                        break
+                    last_err = f"{put.status_code} {put.text}"
+                except httpx.TransportError as e:
+                    last_err = repr(e)
+            if last_err:
+                raise RuntimeError(
+                    f"TikTok chunk {i + 1}/{total_chunks} upload failed: {last_err}")
+    return publish_id

@@ -833,6 +833,60 @@ def m_report(channel: str = "", provider: Optional[str] = None) -> None:
     console.print(f"[green]report[/] {out}")
 
 
+@marketing_app.command("crosspost")
+def m_crosspost(channel: str = "", to: str = "tiktok", top: int = 3,
+                dry_run: bool = False) -> None:
+    """Cross-post this channel's most successful measured Shorts to another platform
+    (default TikTok inbox). Picks the top-N by percentile not already cross-posted,
+    reuses each run's 06_final.mp4 master, and stamps the journal so none reposts."""
+    import json as _json
+
+    from studio.marketing import journal as mj
+    from studio.providers import publish as pub
+
+    j = mj.load(channel)
+    # candidates: measured, has a run, not yet cross-posted to this platform
+    cands = [e for e in j.entries
+             if e.status == "measured" and e.run_id and to not in e.crossposts]
+    # rank by percentile (fallback virality); None sorts last
+    cands.sort(key=lambda e: (e.percentile if e.percentile is not None else -1,
+                              e.virality if e.virality is not None else -1), reverse=True)
+
+    picks, skipped = [], []
+    for e in cands:
+        if len(picks) >= top:
+            break
+        master = paths.master(paths.run_dir(e.run_id))
+        if not master.exists():
+            skipped.append((e, "no 06_final.mp4 master (run cleaned?)"))
+            continue
+        picks.append((e, master))
+
+    if not picks and not skipped:
+        console.print(f"[yellow]nothing to cross-post[/] — no measured winners pending for {to}.")
+        return
+    for e, reason in skipped:
+        console.print(f"[dim]skip[/] {e.id} ({e.idea[:40]}…): {reason}")
+
+    if dry_run:
+        for e, _m in picks:
+            console.print(f"[cyan]would post[/] {e.id}  %ile={e.percentile}  → {to}: {e.idea[:50]}")
+        return
+
+    for e, master in picks:
+        meta = {}
+        rd = paths.run_dir(e.run_id)
+        if paths.meta_json(rd).exists():
+            meta = _json.loads(paths.meta_json(rd).read_text())
+        tags = meta.get("tags") or [h.lstrip("#") for h in meta.get("hashtags", [])]
+        r = pub.publish(to, master, meta.get("title", e.idea), meta.get("description", ""),
+                        tags, channel=channel)
+        e.crossposts[to] = f"{mj._now()}|{r.note}"
+        mj.save(j)  # stamp incrementally so a mid-run crash doesn't lose progress
+        console.print(f"[green]{to}[/] {e.id}: {r.note}")
+    console.print(f"[bold]done[/] — {len(picks)} sent to {to}. Open the app to finish posting.")
+
+
 def _marketing_table(j) -> None:
     t = Table(title=f"journal: {j.channel or 'default'}  ({j.deployed_count} deployed)")
     for col in ("id", "status", "idea", "virality", "%ile", "outcome"):
