@@ -62,6 +62,11 @@ USER_TMPL = """Idea: {idea}
 Total duration: {duration} seconds. Aspect: {aspect}. Voiceover: {voice}.
 Style/tone: {style}
 
+Each scene's visual_prompt must be a DISTINCT, self-contained scene description.
+Do NOT bake aspect ratios/resolutions (e.g. "9:16"), watermarks, or on-screen words
+into visual_prompt — the renderer sets the canvas size and overlays text separately,
+so any such tokens get drawn literally onto the image.
+
 Return JSON:
 {{
   "topic": "...",
@@ -71,7 +76,7 @@ Return JSON:
   "description": "youtube description",
   "hashtags": ["#shorts", "..."],
   "scenes": [
-    {{"id":1,"start_s":0,"end_s":6,"visual_prompt":"<character desc> ... , 9:16",
+    {{"id":1,"start_s":0,"end_s":6,"visual_prompt":"<character desc>, vivid cinematic scene",
       "narration":"...","on_screen_text":"SHORT HOOK","motion_hint":"slow push-in",
       "image_role":"hero","animator":"kinetic","atmosphere":"","fx":["vignette"],
       "transition":"fade",
@@ -109,7 +114,7 @@ def _stub(idea: str, duration: int, aspect: str, voice: bool, style: str) -> Scr
     for i in range(n):
         scenes.append(Scene(
             id=i + 1, start_s=round(i * seg, 3), end_s=round((i + 1) * seg, 3),
-            visual_prompt=f"{char}, part {i + 1} of {n}, vibrant, {aspect}",
+            visual_prompt=f"{char}, part {i + 1} of {n}, vibrant",
             narration=f"{idea} — point {i + 1}." if voice else "",
             on_screen_text=f"{i + 1}", motion_hint="slow push-in"))
     scenes[-1].end_s = float(duration)
