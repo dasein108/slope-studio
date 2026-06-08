@@ -19,6 +19,22 @@ All motion is generated from a single still in ffmpeg, at **$0** per effect.
 
 Full research + architecture: see [`docs/`](docs/) (start at [`docs/README.md`](docs/README.md)).
 
+## 🤖 Agent-native workflow
+
+Slope Studio isn't just a CLI for humans — it ships **Claude Code skills** (`.claude/skills/`) so an AI agent can operate the whole studio: pick what to make, render it, publish it, then measure how it did and learn. The marketing loop described below lives in those skills; the agent drives the same `studio` commands you would, but decides *what* and *when* on its own.
+
+| Skill | What the agent does with it |
+|-------|------------------------------|
+| `film-maker` | Produce / render / debug / publish a Short from an idea — drives the `studio` CLI end-to-end (providers, cost control, artifact inspection, troubleshooting). |
+| `marketing-guru` | Run the whole ideate→deploy→measure→learn cycle, or read channel state / pick the next bet / write a growth brief. Composes the lego-block skills below. |
+| `marketing-ideate` | Decide *what* to make next — generate falsifiable viral bets (web-search current trends + recall the channel's past winners), persist to the backlog. |
+| `marketing-deploy` | Produce + publish a chosen bet (sized to budget) and bind the run to the journal so it can be measured later. |
+| `marketing-measure-learn` | 48–72h after publishing, score each bet's virality vs the channel's own portfolio, then reflect on which assumptions held → update strategy + seeds. |
+| `marketing-autopilot` | Hands-off scheduled driver — each tick does the one action the loop says is due, handling the measurement-maturation wait with no operator in the seat. |
+| `youtube-branding` | Generate a full brand kit (banner, avatar, transparent watermark logo, keywords, description) from a channel name + slogan + niche. |
+
+**The demo moment:** open this repo in [Claude Code](https://claude.com/claude-code) and say *"produce and publish a short about why octopuses are basically aliens"* — the agent scripts it, renders the visuals + voice, stitches, and uploads to YouTube.
+
 ## Install
 
 ```bash
@@ -140,11 +156,6 @@ publishes `index.html` + `examples/out/*.mp4` to `gh-pages` via a throwaway git 
 so `main` and your working tree are never touched. The demo media stays **out** of `main`
 (it's gitignored and regenerable); only the `gh-pages` deploy branch carries it.
 
-The same `gh-pages` site also hosts the article images, so the *Zero to Autopilot* posts
-publish as a single copy-paste: `make devto` (`scripts/build_devto.sh`) pushes each
-`articles/<slug>/images/` to Pages and emits `articles/<slug>/devto.md` with absolute image
-URLs — paste that into dev.to, frontmatter and images render as-is.
-
 ## Full CLI reference
 
 Everything is one `studio` Typer app. `studio --help` (or `studio <cmd> --help`) lists flags.
@@ -201,7 +212,6 @@ Everything is one `studio` Typer app. `studio --help` (or `studio <cmd> --help`)
 |--------|--------------|
 | `make gallery` | deploy the effects gallery to GitHub Pages |
 | `make gallery-render` | re-render all effect demos, then deploy |
-| `make devto` | host article images + emit copy-paste-ready `articles/<slug>/devto.md` |
 | `make lint` | `ruff check studio/` |
 
 ## Status & roadmap
