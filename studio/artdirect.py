@@ -68,6 +68,22 @@ def _is_scenery(sc: Scene) -> bool:
     return (sc.image_role or "").lower() == "bg"
 
 
+# atmosphere -> the literal keywords that justify it (derived from _MOOD, plus its own
+# name). An atmosphere only survives if the scene text actually contains one of these —
+# this is what stops gratuitous snow/rain/embers landing on scenes that don't call for it.
+_ATMO_KEYS: dict[str, set[str]] = {}
+for _keys, _atmo, _ in _MOOD:
+    if _atmo:
+        _ATMO_KEYS.setdefault(_atmo, set()).update(_keys)
+for _a in ATMOS:
+    _ATMO_KEYS.setdefault(_a, set()).add(_a)
+
+
+def _atmo_justified(atmo: str, text: str) -> bool:
+    """True only if the scene text literally references this atmosphere's content."""
+    return any(k in text for k in _ATMO_KEYS.get(atmo, {atmo}))
+
+
 def _mood(text: str) -> tuple[str, list[str]]:
     for keys, atmo, fx in _MOOD:
         if any(k in text for k in keys):
@@ -85,7 +101,10 @@ def decorate(script: Script) -> Script:
 
         # 1) validate whatever the model (or a hand author) already set
         sc.animator = sc.animator if sc.animator in ANIMATORS else ""
-        sc.atmosphere = sc.atmosphere if sc.atmosphere in ATMOS else ""
+        # atmosphere survives only if it's valid AND the scene literally calls for it —
+        # the model loves to sprinkle embers/snow/rain on scenes that don't need them.
+        sc.atmosphere = (sc.atmosphere if sc.atmosphere in ATMOS
+                         and _atmo_justified(sc.atmosphere, text) else "")
         sc.fx = [f for f in (sc.fx or []) if f in FX][:2]
         sc.transition = sc.transition if sc.transition in TRANSITIONS else ""
 
