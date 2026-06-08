@@ -32,15 +32,20 @@ def grab_frame(video: Path, dst: Path, at: float = 0.0) -> None:
 
 def normalize(src: Path, dst: Path, w: int = 0, h: int = 0, fps: int = 30,
               target_dur: float | None = None) -> None:
-    """Scale+pad any clip/image-video to target canvas, fixed fps, yuv420p.
+    """Scale + cover-crop any clip/image-video to fill the target canvas, fixed fps, yuv420p.
+
+    Cover-crop (scale up to cover, then center-crop) — NOT letterbox-pad — so an
+    off-aspect source (e.g. an i2v clip the model returned at 16:9 or 1:1) FILLS a
+    9:16 frame instead of rendering with black bars. Matches the cover behaviour of
+    every other render path here.
 
     If target_dur is given, fit the clip to exactly that length: hold the last frame
     to extend a short clip, or trim a long one. Keeps clips synced to narration.
     """
     w, h = w or canvas.W, h or canvas.H
     vf = (
-        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
-        f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps}"
+        f"scale={w}:{h}:force_original_aspect_ratio=increase,"
+        f"crop={w}:{h},setsar=1,fps={fps}"
     )
     args = ["ffmpeg", "-y", "-i", str(src), "-vf", vf, "-pix_fmt", "yuv420p",
             "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20"]
