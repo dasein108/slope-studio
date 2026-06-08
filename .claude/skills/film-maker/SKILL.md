@@ -304,9 +304,15 @@ glitch, god-rays, shape morphs, kinetic typography…):** the bullet above lists
   [effects → adding an effect](../../../docs/30-animation/effects/README.md#adding-an-effect).
 
 **Voice & tone:** Script `voice_name` (man|woman|cartoon|narrator) + `tone`
-(neutral|serious|mystical|friendly|sad|excited); per-scene `tone` overrides. CLI:
+(neutral|serious|mystical|friendly|sad|excited|**poetic**); per-scene `tone` overrides. CLI:
 `--voice man --tone mystical`. edge approximates tone (rate/pitch, free); openai-tts
 gives real tone. See [`voices.md`](../../../docs/30-animation/voices.md).
+
+> **Poetry / spoken-verse** is a special case where voice + tone IS the art — accents
+> must land on the right words. Use `narrate/voice --provider openai-tts --tone poetic` (NOT
+> edge: it only pitch-shifts, can't place accents; openrouter is script-only, no TTS).
+> One scene per line/couplet + per-scene `tone` for line-level breath. Full preset:
+> [`docs/recipes/poetry.md`](../../../docs/recipes/poetry.md) and guides §13.
 
 Full references (read before authoring scenes or adding presets):
 - Schema: [`docs/30-animation/scenario-schema.md`](../../../docs/30-animation/scenario-schema.md)

@@ -28,6 +28,14 @@ These come from direct feedback — treat as **hard defaults** unless the user s
 1. **Use lots of motion, cheaply.** Favor `parallax`, `slice`, `kinetic`,
    `motion-drift*`, and honest `static` over plain zoom. A static-*feeling* Short is a
    failure — but a *deliberate* static still is fine (see #5).
+1a. **DEFAULT to `motion-drift*` for moving scenery; do NOT reach for bare `parallax`.**
+   `parallax` auto-extracts a foreground (rembg) and **tears/holes the frame** on any still
+   without a clean plate — the operator has flagged this **twice** (latest: a robed figure at
+   a door → smeared/holed). Use `parallax` ONLY (a) with `--parallax-plates` (balanced+, a
+   real separate bg plate), or (b) on a **subjectless vista** where it degrades to a clean
+   full-image pan (operator liked that on a golden-city closing beat). **Never author bare
+   `parallax` on a still that has a clear figure/subject** — drift it, or build a deliberate
+   plated foreground. When in doubt, `motion-drift{left,right,up,down}`.
 1b. **NO schematic / vector drawings in art or story videos.** `manim` (shapes,
    diagrams, geometric silhouettes) is **only** for informative / educational /
    scientific pieces. In a story/cinematic video, render every beat as a real
@@ -380,6 +388,46 @@ Audio is a real stage (`studio audio`, between `stitch` and `voice`; mixed/ducke
 - [ ] **Sound present:** a `music` mood is set; key beats have `sfx`.
 - [ ] **Atmosphere in the art:** weather/mood baked into prompts where it fits.
 - [ ] **Captions** fit; **effects verified** by frame-grab (§7).
+
+## 13. Poetry / spoken-verse — voice, tone & accents (special case)
+
+Poetry is the one format where **pacing and accent placement ARE the art**. The prose
+defaults (fast cuts, 2.6 w/s, busy motion, flat edge voice) fight the verse. Full preset:
+[`docs/recipes/poetry.md`](../../../docs/recipes/poetry.md). The operator-critical parts:
+
+**Voice = `openai-tts`, tone = `poetic` (NOT edge, NOT openrouter).**
+- `edge` (free) only shifts global rate/pitch — it **cannot place accents** on specific
+  words. For verse it sounds flat/wrong. Pay for `openai-tts` here; it earns its keep.
+- **OpenRouter is a script-stage (text-LLM) router — it has NO TTS/audio endpoint.** You
+  can write the verse with an openrouter LLM, but the *voice* can only be `edge`/`openai-tts`.
+- The `poetic` tone (`voices.py` `OPENAI_TONES`) is an instruction-driven prosody: slow,
+  pause at every line break / `…` / `—`, stress the key noun-or-verb per line, lift the
+  final word. That instruction string is **where accents come from** — edit it, or drop a
+  per-scene `tone` override, to re-aim the emphasis.
+
+```bash
+studio narrate $RID --provider openai-tts --voice narrator --tone poetic
+studio voice   $RID --provider openai-tts                  # captions stay OFF
+```
+
+**Placing the right accents (the levers, in order):**
+1. **One scene per line or couplet.** The cross-fade *is* the line break; per-scene `tone`
+   lets you drop a single stanza to `mystical`/`sad` for a turn.
+2. **Punctuation drives breath.** End lines with `.` / `…` / `—` — TTS pauses on terminal
+   punctuation. A bare `…` line = a held silent beat (clip holds last frame).
+3. **Write ~1.6–2.0 w/s, not 2.6.** A 10s scene = ~16–20 words. Short lines. Slower speech
+   auto-lengthens the scene (narration-driven timing), so the visuals breathe with the voice.
+4. **Emphasis in the verse itself.** CAPS / spacing / line position steer `gpt-4o-mini-tts`;
+   for a hard accent, customise the `poetic` instruction (or add a one-off tone) naming the
+   word to stress.
+
+**Visuals match the voice:** calm, drifting — `parallax` (scenery) · `static` (held beats) ·
+**no** `slice`/`glitch`/fast `motion-*`/`pulse`. Transitions `fade`/`dissolve`/`fadeblack`
+at 0.8–1.2s (long, soft — see recipe). `voice_name`: `narrator` (→ onyx, grave) or `woman`
+(→ nova, warm). Captions OFF (a text wall reads as prose, kills the poem). Script is usually
+**hand-authored** (`builds/build_<slug>.py`) — the LLM script stage optimises hooks, not verse.
+
+---
 
 ## 10. Adding a brand-new effect (pattern)
 

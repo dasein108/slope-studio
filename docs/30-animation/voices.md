@@ -9,8 +9,12 @@ scene) and the `voice` fallback.
 | field | where | values |
 |-------|-------|--------|
 | `voice_name` | Script | `man` · `woman` (default) · `cartoon` · `narrator` |
-| `tone` | Script | `neutral` (default) · `serious` · `mystical` · `friendly` · `sad` · `excited` |
+| `tone` | Script | `neutral` (default) · `serious` · `mystical` · `friendly` · `sad` · `excited` · `poetic` |
 | `tone` | Scene (optional) | same set — **overrides** the Script tone for that scene |
+
+> **`poetic`** is the spoken-verse tone: slow, pauses at every line break / `…` / `—`,
+> stresses the key word per line. On `openai-tts` this is real accent placement; `edge`
+> only approximates it (−18% rate). Poetry preset: [`docs/recipes/poetry.md`](../../recipes/poetry.md).
 
 CLI overrides: `studio run … --voice man --tone mystical` (or `studio narrate <id> --voice … --tone …`).
 
@@ -30,7 +34,7 @@ edge `cartoon` = child voice pitched +18 Hz — playful, not a true character vo
 ## edge tone → (rate, pitch)
 
 `neutral` (+0%,+0Hz) · `serious` (-8%,-3Hz) · `mystical` (-14%,-4Hz) · `friendly`
-(+6%,+8Hz) · `sad` (-16%,-6Hz) · `excited` (+14%,+12Hz). Tone changes pacing, so it
+(+6%,+8Hz) · `sad` (-16%,-6Hz) · `excited` (+14%,+12Hz) · `poetic` (-18%,-3Hz). Tone changes pacing, so it
 also changes scene length — which the narration-driven timing handles automatically.
 
 ## Per-scene tone example

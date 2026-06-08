@@ -23,6 +23,7 @@ EDGE_TONES = {
     "friendly": ("+6%", "+8Hz"),
     "sad":      ("-16%", "-6Hz"),
     "excited":  ("+14%", "+12Hz"),
+    "poetic":   ("-18%", "-3Hz"),   # slow + breathy approximation (edge can't place accents)
 }
 
 # --- OpenAI gpt-4o-mini-tts ---
@@ -39,6 +40,12 @@ OPENAI_TONES = {
     "friendly": "Speak in a warm, friendly, upbeat and conversational tone.",
     "sad":      "Speak in a soft, slow, melancholic tone.",
     "excited":  "Speak in an energetic, excited, fast-paced tone.",
+    "poetic":   (
+        "Read this as poetry, aloud to one person. Slow, deliberate, unhurried. "
+        "Pause fully at every line break and on every '…' or '—'; let each image land "
+        "before the next. Stress the key noun or verb in each line and lift the final "
+        "word of a line slightly. Warm, intimate, hushed. Never rush; let silence do work."
+    ),
 }
 
 

@@ -60,7 +60,7 @@ finer control over imagery and breath.
 Quick path (existing tones):
 
 ```bash
-studio voice <id> --voice-provider openai-tts   # uses Script voice_name + tone
+studio voice <id> --provider openai-tts   # uses Script voice_name + tone
 ```
 
 Better path — add a dedicated poetry tone in `studio/voices.py`:
@@ -179,10 +179,10 @@ RID=$(studio init "the sea remembers — a short poem" --duration 60)
 # ... author runs/$RID/01_script.json by hand (recommended for poetry — see builds/) ...
 
 studio visuals  $RID --image-provider fal-nanobanana
-studio narrate  $RID --voice-provider openai-tts --voice narrator --tone poetic
-studio clips    $RID --video-strategy kenburns        # parallax/static are free
+studio narrate  $RID --provider openai-tts --voice narrator --tone poetic
+studio clips    $RID --strategy kenburns               # parallax/static are free
 studio stitch   $RID
-studio voice    $RID --voice-provider openai-tts       # captions stay off
+studio voice    $RID --provider openai-tts             # captions stay off
 studio save     $RID
 studio status   $RID
 ```
