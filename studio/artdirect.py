@@ -135,7 +135,31 @@ def decorate(script: Script) -> Script:
             sc.transition = "fade" if i == 0 else ("dissolve" if i % 4 == 0 else "")
 
     _apply_taste_caps(scenes)
+    _diversify_duplicate_prompts(scenes)
     return script
+
+
+# distinct framings appended to repeated visual_prompts so identical text doesn't render
+# as identical frames (the model often reuses one portrait for every hero scene).
+_FRAMINGS = ["wide establishing shot", "extreme close-up", "low-angle dramatic shot",
+             "profile view", "seen from behind", "over-the-shoulder framing",
+             "high-angle shot", "dramatic three-quarter angle"]
+
+
+def _diversify_duplicate_prompts(scenes: list[Scene]) -> None:
+    """When >1 scene shares an identical visual_prompt, append a distinct framing cue to
+    each repeat (the first occurrence is left as authored) so they render as varied shots
+    instead of the same image N times."""
+    seen: dict[str, int] = {}
+    for sc in scenes:
+        vp = (sc.visual_prompt or "").strip()
+        if not vp:
+            continue
+        key = vp.lower()
+        k = seen.get(key, 0)
+        if k > 0:
+            sc.visual_prompt = f"{vp}, {_FRAMINGS[(k - 1) % len(_FRAMINGS)]}"
+        seen[key] = k + 1
 
 
 def _apply_taste_caps(scenes: list[Scene]) -> None:
