@@ -737,9 +737,13 @@ def m_link(entry_id: str, run_id: str, channel: str = "") -> None:
 
 
 @marketing_app.command("measure")
-def m_measure(channel: str = "", comments_n: int = 60) -> None:
+def m_measure(channel: str = "", comments_n: int = 60, force: bool = False) -> None:
     """Step 3 — fetch stats + comments for deployed bets, score virality RELATIVE
-    to this channel's portfolio, and write results back to the journal."""
+    to this channel's portfolio, and write results back to the journal.
+
+    Videos younger than `loop.maturation_hours` are SKIPPED (their view/retention
+    numbers haven't stabilized — measuring them early produces false verdicts that
+    then poison `learn`). Pass `--force` to measure regardless of age."""
     import json as _json
 
     from studio.marketing import journal as mj
@@ -751,10 +755,15 @@ def m_measure(channel: str = "", comments_n: int = 60) -> None:
     if not targets:
         console.print("[yellow]nothing to measure[/] — link deployed runs first (`marketing link`).")
         return
+    maturation_days = j.loop.maturation_hours / 24.0
     stats = analytics.video_stats([e.video_id for e in targets], channel)
+    skipped = []
     for e in targets:
         st = stats.get(e.video_id)
         if not st:
+            continue
+        if not force and st["age_days"] < maturation_days:
+            skipped.append((e.id, st["age_days"]))
             continue
         m = mj.Metrics(views=st["views"], likes=st["likes"], comments=st["comments"],
                        age_days=st["age_days"], fetched_at=mj._now())
@@ -780,6 +789,10 @@ def m_measure(channel: str = "", comments_n: int = 60) -> None:
         e.percentile = p
         e.outcome = mscore.outcome(p, j.in_cold_start)
     mj.save(j)
+    if skipped:
+        names = ", ".join(f"{eid} ({age:.1f}d)" for eid, age in skipped)
+        console.print(f"[yellow]skipped {len(skipped)} too-young (< {maturation_days:.1f}d "
+                      f"maturation)[/]: {names} — re-run after they age, or --force")
     _marketing_table(j)
 
 
