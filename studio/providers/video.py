@@ -51,8 +51,8 @@ def _clip_dur(model: str, seconds: float) -> int:
 
 
 def estimate_cost(provider: str, model: str, seconds: float) -> float:
-    """Predicted cost for ONE clip of `seconds`. kenburns is free."""
-    if provider == "kenburns":
+    """Predicted cost for ONE clip of `seconds`. kenburns and local-i2v are free."""
+    if provider in ("kenburns", "local-i2v"):
         return 0.0
     spec = FAL_MODELS.get(model, FAL_MODELS["kling"])
     # i2v models bill per second, clamped to the model's accepted duration grid.
@@ -69,10 +69,28 @@ def generate(provider: str, image: Path, prompt: str, seconds: float, dst: Path,
         _fal_i2v(image, prompt, seconds, dst, model)
         cost = estimate_cost(provider, model, seconds)
         note = f"fal:{model} ${cost}"
+    elif provider == "local-i2v":
+        from studio.providers import comfy_local
+
+        lm = model if model in comfy_local.LOCAL_MODELS else "wan-local"
+        w, h = _local_dims()
+        comfy_local.generate(image, prompt, seconds, dst, model=lm, width=w, height=h)
+        cost, note = 0.0, f"local:{lm} (free)"
     else:
         raise ValueError(f"unknown video provider {provider}")
     return GenResult(path=dst, cost_usd=cost, latency_s=round(time.time() - t0, 2),
                      provider=provider, note=note)
+
+
+def _local_dims(longest: int = 832) -> tuple[int, int]:
+    """Render size for local i2v: match the live canvas aspect, capped to `longest`,
+    rounded to /32 (model requirement). Local models can't do full 1080 in sane time."""
+    from studio import canvas
+
+    w, h = canvas.W, canvas.H
+    if w >= h:
+        return longest, max(32, round(longest * h / w / 32) * 32)
+    return max(32, round(longest * w / h / 32) * 32), longest
 
 
 def _fal_i2v(image: Path, prompt: str, seconds: float, dst: Path, model: str) -> None:

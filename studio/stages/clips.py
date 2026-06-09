@@ -41,11 +41,17 @@ def _effective_priority(scene: Scene, index: int, total: int) -> float:
 
 
 def plan(script: Script, strategy: str, model: str,
-         ai_scene_ids: set[int] | None, max_cost: float | None) -> tuple[dict[int, str], float]:
-    """Return {scene_id: provider} and the total pre-flight AI cost estimate."""
+         ai_scene_ids: set[int] | None, max_cost: float | None,
+         ai_provider: str = "fal-i2v", local_max_clips: int = 6) -> tuple[dict[int, str], float]:
+    """Return {scene_id: provider} and the total pre-flight AI cost estimate.
+
+    `ai_provider` is the provider used for AI scenes (fal-i2v or the free local-i2v).
+    For local-i2v the per-clip cost is $0, so `auto` would pick every scene; we cap it
+    at `local_max_clips` (each local clip is minutes of render — don't queue hours)."""
     scenes = script.scenes
     n = len(scenes)
     chosen_ai: set[int] = set()
+    local = ai_provider == "local-i2v"
 
     if strategy == "kenburns":
         pass
@@ -64,21 +70,23 @@ def plan(script: Script, strategy: str, model: str,
         spent = 0.0
         # highest-priority scenes first; keep filling any scene whose clip still fits.
         for i in ranked:
-            c = video.estimate_cost("fal-i2v", model, scenes[i].duration_s)
+            if local and len(chosen_ai) >= local_max_clips:
+                break  # free per-clip, so cap by count not cost
+            c = video.estimate_cost(ai_provider, model, scenes[i].duration_s)
             if spent + c <= budget:
                 chosen_ai.add(scenes[i].id)
                 spent += c
     else:
         raise ValueError(f"unknown strategy {strategy}")
 
-    per_scene = {s.id: ("fal-i2v" if s.id in chosen_ai else "kenburns") for s in scenes}
+    per_scene = {s.id: (ai_provider if s.id in chosen_ai else "kenburns") for s in scenes}
     est = round(sum(video.estimate_cost(per_scene[s.id], model, s.duration_s) for s in scenes), 4)
     return per_scene, est
 
 
 def run(run_dir: Path, strategy: str = "kenburns", model: str = "kling",
         ai_scene_ids: set[int] | None = None, max_cost: float | None = None,
-        force: bool = False) -> GenResult:
+        force: bool = False, ai_provider: str = "fal-i2v") -> GenResult:
     script = Script.model_validate_json(paths.script_json(run_dir).read_text())
     canvas.set_from_aspect(script.aspect)
     paths.clips_dir(run_dir).mkdir(parents=True, exist_ok=True)
@@ -92,8 +100,8 @@ def run(run_dir: Path, strategy: str = "kenburns", model: str = "kling",
     def clip_seconds(s: Scene) -> float:
         return float(timing.get(str(s.id), s.duration_s))
 
-    per_scene, estimate = plan(script, strategy, model, ai_scene_ids, max_cost)
-    ai_n = sum(1 for p in per_scene.values() if p == "fal-i2v")
+    per_scene, estimate = plan(script, strategy, model, ai_scene_ids, max_cost, ai_provider)
+    ai_n = sum(1 for p in per_scene.values() if p in ("fal-i2v", "local-i2v"))
 
     # PRE-FLIGHT: auto already trims to fit; all/hybrid must refuse if over budget.
     if max_cost is not None and estimate > max_cost + 1e-6:
@@ -120,7 +128,7 @@ def run(run_dir: Path, strategy: str = "kenburns", model: str = "kling",
                 f"${next_cost} would exceed --max-cost ${max_cost}."
             )
         raw = dst.with_name(dst.stem + "_raw.mp4")
-        if prov == "fal-i2v":
+        if prov in ("fal-i2v", "local-i2v"):
             res = video.generate(prov, img, scene.motion_hint or scene.visual_prompt,
                                  secs, raw, model=model)
         else:

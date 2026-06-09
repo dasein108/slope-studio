@@ -65,6 +65,10 @@ studio/
     image.py        visuals: card(Pillow)|stub|pollinations|fal-nanobanana
     cardgen.py      Pillow: card images, caption strips, kinetic headlines
     video.py        clips AI: fal-i2v (kling/ltx/wan/hailuo/seedance) + FAL_MODELS prices
+                    + local-i2v (FREE, local ComfyUI on MPS) → comfy_local.py
+    comfy_local.py  local-i2v backend: patches workflows/*.json (wan-local|ltx-local),
+                    submits to a running ComfyUI server, polls, pulls the mp4. SLOW
+                    (minutes/clip), DRAFT-tier. `python -m studio.providers.comfy_local` to test.
     tts.py          voice: edge (SubMaker captions)|openai-tts; synth_scene for narrate
   voices.py         semantic voice (man/woman/cartoon/narrator) + tone -> TTS settings
     publish.py      youtube | tiktok(stub, audit-gated); _creds(channel, scopes) OAuth
@@ -189,6 +193,7 @@ Chosen by which keys are present in `.env`, else free fallback:
 - **Music bed is ducked under narration** (`ffmpeg.duck_music`, sidechain). Default bed level is **−24 dB** (voice-forward); raise/lower `music_db` to taste. The non-ducked `mux_audio` path uses a flat `volume=0.15` for music.
 - **Audio/video sync is narration-driven.** `narrate` sets per-scene clip durations = TTS length (`timing.json`); `clips`/`stitch` honor them; `concat_xfade_seq` overlap-compensates transitions; `mux_audio` never truncates (holds last frame + tail). Net: video length == narration (±tail), no drift. Don't reintroduce `-shortest`-style trimming.
 - **`kinetic` over a `card` image double-renders the headline** (card bakes text). Pair `kinetic` with `fal-nanobanana` illustrations. See `docs/30-animation/kinetic.md`.
+- **`local-i2v` = FREE local video gen via ComfyUI** (`studio clips --video-provider local-i2v --model wan-local|ltx-local`, or `studio run --video-provider local-i2v`). Needs a running ComfyUI server (default `http://127.0.0.1:8188`) + bf16 models on disk. **Use bf16, NOT fp8 — fp8 is broken on Metal/MPS.** It's a DRAFT tier: minutes per clip. `auto` strategy caps local AI scenes at `local_max_clips=6` (free per-clip cost would otherwise pick every scene → hours); `all` is uncapped (explicit). Clips capped 5s; render res = canvas aspect at longest-side 832 (`video._local_dims`). Workflow templates in `providers/workflows/*.json`; model filenames auto-filled from the live `/object_info`. ⚠️ 32 GB RAM is tight for Wan 5B fp16 + umt5 fp16 (~22 GB) — close other apps or it OOMs/swaps.
 - **`parallax`/`manim` need optional extras** (`.[parallax]`, `.[manim]`); both fall back to `kenburns` (recorded in the manifest note) if missing/failing — pipeline never breaks. `slice` needs no extra.
 - **`parallax` = static sharp subject + REAL background drifting** — the subject is **inpainted out** of the background (`animate._inpaint_subject`, free blur-diffusion, no OpenCV) so the drifting plane has **no ghost twin**. Direction from `motion_hint` (`right`/`left`/`up`/`down`). Best over smooth scenery. **`blurred-parallax`** = the old soft look (blurred panning planes, `gblur` hides the ghost) — for busy backgrounds. See `docs/30-animation/parallax.md`.
 - **`manim_code` must be authored flush-left** (or consistently indented); `animate._manim` dedents+reindents, but mixed indentation breaks it. Make vector effects **literal** (real path/silhouette/flash), not abstract lines. See `docs/30-animation/manim.md`.

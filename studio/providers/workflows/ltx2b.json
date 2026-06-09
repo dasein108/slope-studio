@@ -1,0 +1,14 @@
+{
+  "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "__CKPT__"}, "_meta": {"title": "ltx-ckpt (model+vae)"}},
+  "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "__CLIP__", "type": "ltxv"}, "_meta": {"title": "t5-text-encoder"}},
+  "4": {"class_type": "CLIPTextEncode", "inputs": {"text": "__PROMPT__", "clip": ["2", 0]}, "_meta": {"title": "positive"}},
+  "5": {"class_type": "CLIPTextEncode", "inputs": {"text": "static, blurry, low quality, distorted, watermark, text, jpeg artifacts, deformed", "clip": ["2", 0]}, "_meta": {"title": "negative"}},
+  "6": {"class_type": "LoadImage", "inputs": {"image": "__IMAGE__"}, "_meta": {"title": "still"}},
+  "7": {"class_type": "ModelSamplingLTXV", "inputs": {"model": ["1", 0], "max_shift": 2.05, "base_shift": 0.95}, "_meta": {"title": "ltx-shift"}},
+  "8": {"class_type": "LTXVImgToVideo", "inputs": {"positive": ["4", 0], "negative": ["5", 0], "vae": ["1", 2], "image": ["6", 0], "width": 480, "height": 832, "length": 49, "batch_size": 1, "strength": 1.0}, "_meta": {"title": "i2v"}},
+  "9": {"class_type": "LTXVConditioning", "inputs": {"positive": ["8", 0], "negative": ["8", 1], "frame_rate": 25.0}, "_meta": {"title": "fps-cond"}},
+  "10": {"class_type": "KSampler", "inputs": {"model": ["7", 0], "seed": 0, "steps": 20, "cfg": 3.0, "sampler_name": "euler", "scheduler": "simple", "positive": ["9", 0], "negative": ["9", 1], "latent_image": ["8", 2], "denoise": 1.0}, "_meta": {"title": "sampler"}},
+  "11": {"class_type": "VAEDecode", "inputs": {"samples": ["10", 0], "vae": ["1", 2]}, "_meta": {"title": "decode"}},
+  "12": {"class_type": "CreateVideo", "inputs": {"images": ["11", 0], "fps": 25.0}, "_meta": {"title": "to-video"}},
+  "13": {"class_type": "SaveVideo", "inputs": {"video": ["12", 0], "filename_prefix": "slope/ltx", "format": "mp4", "codec": "h264"}, "_meta": {"title": "save"}}
+}

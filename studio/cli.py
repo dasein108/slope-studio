@@ -127,19 +127,24 @@ def narrate(run_id: str, provider: Optional[str] = None, voice: str = "",
 @app.command()
 def clips(run_id: str, strategy: str = "auto", model: str = "kling",
           ai_scenes: Optional[str] = None, max_cost: float = 3.0,
-          force: bool = False) -> None:
+          force: bool = False, video_provider: str = "fal-i2v") -> None:
     """Stage 3 — video clips. --strategy kenburns|all|hybrid|auto.
 
     kenburns=free, all=AI every scene, hybrid=--ai-scenes 1,7,15, auto=smart fill
     within --max-cost. Per-second AI cost is estimated and the stage ABORTS/trims so
     spend never exceeds --max-cost (0 disables). Preview with `studio estimate`.
+
+    --video-provider local-i2v renders AI scenes FREE on a local ComfyUI server
+    (slow; pair with --model wan-local|ltx-local). Default fal-i2v (hosted, paid).
     """
     d, m = _load(run_id)
     if ai_scenes:
         strategy = "hybrid"
+    if video_provider == "local-i2v" and model not in ("wan-local", "ltx-local"):
+        model = "wan-local"
     r = clips_stage.run(d, strategy=strategy, model=model,
                         ai_scene_ids=_parse_ids(ai_scenes), max_cost=max_cost or None,
-                        force=force)
+                        force=force, ai_provider=video_provider)
     m.record("clips", done=True, provider=r.provider, cost_usd=r.cost_usd,
              latency_s=r.latency_s, note=r.note)
     manifest.save(d, m)
@@ -280,6 +285,7 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
         script_provider: Optional[str] = None, image_provider: Optional[str] = None,
         cheap_image_provider: Optional[str] = None,
         video_strategy: Optional[str] = None, video_model: Optional[str] = None,
+        video_provider: str = "fal-i2v",
         voice_provider: Optional[str] = None, captions: str = "off",
         voice_name: str = "", tone: str = "",
         sfx_provider: Optional[str] = None, music_provider: Optional[str] = None,
@@ -303,7 +309,8 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
     sfxp = sfx_provider or p["sfx"]
     musicp = music_provider or p["music"]
     strat = "hybrid" if ai_scenes else (video_strategy or p["strategy"])
-    vmodel = video_model or tiers.DEFAULT_MODEL_BY_TIER.get(tier, "kling")
+    vmodel = video_model or ("wan-local" if video_provider == "local-i2v"
+                             else tiers.DEFAULT_MODEL_BY_TIER.get(tier, "kling"))
 
     if run_id and manifest.manifest_path(paths.run_dir(run_id)).exists():
         rid = run_id  # resume an existing run
@@ -336,7 +343,7 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
             # the guard ON (→ all kenburns).
             music_reserve = audio_costs.expected_music_cost(musicp) if with_voice else 0.0
             cap = 0.0 if not max_cost else max(0.0001, round(max_cost - m.total_cost_usd - music_reserve, 4))
-            clips(rid, strat, vmodel, ai_scenes, cap, False)
+            clips(rid, strat, vmodel, ai_scenes, cap, False, video_provider)
         elif stage == "stitch":
             stitch(rid, transition)
         elif stage == "audio":
