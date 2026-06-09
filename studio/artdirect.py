@@ -114,6 +114,15 @@ def decorate(script: Script) -> Script:
         # them (LLM or author) → a lateral drift. Lateral motion only.
         if sc.animator in ("motion-zoomin", "motion-zoomout", "motion-pulse"):
             sc.animator = "motion-driftright" if i % 2 == 0 else "motion-driftleft"
+        # PREFER parallax ON SCENERY: a subjectless establishing/landscape beat (image_role:"bg")
+        # is exactly what parallax is for — give it real 2.5D depth instead of a flat pan/still.
+        # Upgrade a plain pan/static (not the first/last positional beats); keep intentional
+        # reveals (slice/kinetic/manim) and anything already parallax. This is what guarantees
+        # parallax actually APPEARS — on the right scenes — rather than being only downgraded.
+        _PLAIN = ("kenburns", "static", "motion-driftleft", "motion-driftright",
+                  "motion-driftup", "motion-driftdown")
+        if _is_scenery(sc) and sc.animator in _PLAIN and 0 < i < n - 1:
+            sc.animator = "parallax"
         # atmosphere survives only if it's valid AND the scene literally calls for it —
         # the model loves to sprinkle embers/snow/rain on scenes that don't need them.
         sc.atmosphere = (sc.atmosphere if sc.atmosphere in ATMOS

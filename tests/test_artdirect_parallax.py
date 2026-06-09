@@ -32,14 +32,34 @@ def test_body_cycle_has_no_parallax_or_zoom():
     assert not any(a.startswith("motion-zoom") or a == "motion-pulse" for a in _BODY_CYCLE)
 
 
-def test_banned_zoom_pulse_downgraded():
-    s = Script(topic="t", duration_s=18, scenes=[
-        _scene(1, "hero", "motion-zoomin"),
-        _scene(2, "bg", "motion-zoomout"),
-        _scene(3, "hero", "motion-pulse"),
+def test_scenery_upgraded_to_parallax():
+    # a subjectless bg beat with a flat pan → parallax (depth); people stay drift; reveal kept
+    s = Script(topic="t", duration_s=30, scenes=[
+        _scene(1, "hero", "kinetic"),          # first beat — left alone
+        _scene(2, "bg", "kenburns"),           # scenery flat pan → parallax
+        _scene(3, "bg", "motion-driftright"),  # scenery drift → parallax
+        _scene(4, "bg", "slice"),              # intentional reveal → kept
+        _scene(5, "hero", "static"),           # last beat — left alone
     ])
     decorate(s)
-    assert all(sc.animator.startswith("motion-drift") for sc in s.scenes)
+    assert s.scenes[1].animator == "parallax"
+    assert s.scenes[2].animator == "parallax"
+    assert s.scenes[3].animator == "slice"
+    assert s.scenes[0].animator != "parallax" and s.scenes[4].animator != "parallax"
+
+
+def test_banned_zoom_pulse_downgraded():
+    # zoom/pulse on PEOPLE scenes → lateral drift (never zoom). Use hero roles + middle
+    # positions so the scenery→parallax upgrade doesn't apply.
+    s = Script(topic="t", duration_s=30, scenes=[
+        _scene(1, "hero", "static"),           # spacer (first beat untouched)
+        _scene(2, "hero", "motion-zoomin"),
+        _scene(3, "hero", "motion-zoomout"),
+        _scene(4, "hero", "motion-pulse"),
+        _scene(5, "hero", "static"),           # spacer (last beat untouched)
+    ])
+    decorate(s)
+    assert all(s.scenes[i].animator.startswith("motion-drift") for i in (1, 2, 3))
 
 
 def test_unset_subject_scene_never_autofills_parallax():
