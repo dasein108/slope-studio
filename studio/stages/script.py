@@ -87,14 +87,21 @@ Return JSON:
 
 
 def run(run_dir: Path, idea: str, duration: int, aspect: str, voice: bool,
-        style: str, provider: str) -> tuple[Script, float, float]:
+        style: str, provider: str, revision_notes: str = "") -> tuple[Script, float, float]:
+    """idea -> scenario. `revision_notes` (from the critic gate) is appended so a re-script
+    addresses the prior attempt's content failures instead of regenerating blindly."""
     t0 = time.time()
     if provider == "stub":
         script = _stub(idea, duration, aspect, voice, style)
     else:
-        raw = llm.complete(provider, SYSTEM, USER_TMPL.format(
+        user = USER_TMPL.format(
             idea=idea, duration=duration, aspect=aspect,
-            voice="yes" if voice else "no", style=style or "engaging, fast-paced"))
+            voice="yes" if voice else "no", style=style or "engaging, fast-paced")
+        if revision_notes.strip():
+            user += ("\n\nThe previous draft was REJECTED by the editor. You MUST fix every "
+                     "issue below in this rewrite (keep what worked, repair what failed):\n"
+                     f"{revision_notes.strip()}")
+        raw = llm.complete(provider, SYSTEM, user)
         data = json.loads(raw)
         data.setdefault("duration_s", duration)
         data.setdefault("aspect", aspect)

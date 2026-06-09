@@ -28,25 +28,26 @@ These come from direct feedback — treat as **hard defaults** unless the user s
 1. **Use lots of motion, cheaply.** Favor `parallax`, `slice`, `kinetic`,
    `motion-drift*`, and honest `static` over plain zoom. A static-*feeling* Short is a
    failure — but a *deliberate* static still is fine (see #5).
-1a. **PREFER quality, LAYERED parallax (2–3 planes) for depth — but only the PLATED kind.**
-   True 2.5D depth is the most premium *free* look in the kit, so reach for it on hero /
-   establishing / scenery beats instead of settling for a flat single drift. "Quality
-   layered" means **distinct planes moving at different rates**, built from REAL images, not
-   one torn still:
-   - **2 planes (the standard, balanced+ default):** a static foreground subject over a clean,
-     separately-rendered background. Generate both plates with `--parallax-plates --parallax-fg`
-     (auto on balanced/premium) so it composites two real images — **no inpaint, no tear**.
-   - **3 planes (the premium reach):** add a midground so far/mid/near drift at different
-     speeds (sky slow, hills medium, subject static). Today that means **authoring the extra
-     plane as its own transparent PNG** and composing it (`ffmpeg.parallax_drift` takes a
-     per-plane `depth`); for atmospheric scenery, `blurred-parallax` already gives a free
-     2-plane (sky vs ground, opposite directions) — use it when you want soft depth fast.
-   - **Aim for 2 clean planes minimum on any parallax scene; reach for 3 on the hero shot.**
-   **The one hard NO:** never author **bare plateless `parallax`** on a still with a clear
-   figure/subject — rembg auto-extraction **tears/holes the frame** (operator flagged twice;
-   a robed figure at a door → smeared). No plate + a real subject → use `motion-drift*` instead.
-   A subjectless vista safely degrades to a clean full-image pan. When in doubt between cheap
-   options, `motion-drift{left,right,up,down}`; when the beat deserves depth, invest in plates.
+1a. **`parallax` = PERSPECTIVE / DEPTH scenery, NOT a big foreground subject.** True 2.5D
+   depth is the most premium *free* look in the kit — but it only works on frames with **real
+   receding distance**: sky & clouds (far), mountains / hills / a skyline (mid), houses / trees
+   / a road / terrain (near). Those planes drift at different speeds and the depth reads.
+   - 🚫 **THE HARD NO (operator rule): never use `parallax` on a frame a human, animal, face, or
+     one single object DOMINATES (takes most of the space).** A big close subject has no depth
+     to reveal and floats as a flat cutout — worse, not better. Big/close subject → `static`,
+     `slice`, or `motion-drift*`. A *small* figure inside a wide landscape is fine (it's just
+     the nearest plane).
+   - **Compose parallax stills as landscapes with clear distance** — foreground, midground,
+     horizon — not a portrait of one thing. Write the `visual_prompt` that way.
+   - **2 planes (standard, balanced+ default):** a clean `scene_NN_bg.png` plate drifts behind
+     held near scenery — two REAL images, **no inpaint, no tear**. `--parallax-plates` (auto on
+     balanced/premium).
+   - **3 planes (the reach):** author far/mid/near as separate PNGs (sky slow, hills medium,
+     foreground near) — `ffmpeg.parallax_drift` takes a per-plane `depth`. For fast soft depth,
+     `blurred-parallax` gives a free 2-plane sky-vs-ground.
+   - **Aim for 2 clean planes minimum; reach for 3 on the hero/establishing landscape.** Never
+     author bare plateless `parallax` expecting depth — with no plate it's only a flat pan
+     (still safe, no tear). When in doubt between cheap options, `motion-drift{left,right,up,down}`.
 1b. **NO schematic / vector drawings in art or story videos.** `manim` (shapes,
    diagrams, geometric silhouettes) is **only** for informative / educational /
    scientific pieces. In a story/cinematic video, render every beat as a real
@@ -98,11 +99,54 @@ These come from direct feedback — treat as **hard defaults** unless the user s
 
 ---
 
+## 0.5 Writing a scenario that PASSES the critic (content, not just motion)
+
+The #1 failure is a beautifully-animated video that says **nothing** — vague narration, no
+real fact, no feeling. Effects are polish; **content is the product.** Author the script to
+clear the SKILL.md ①.5 critic gate (topic revealed · concrete fact explained · informative AND
+interesting · emotional payoff) on the first try:
+
+**Structure — a Short is a tiny story with a spine:**
+1. **Hook (0–3s)** — a curiosity gap or a shocking claim that names the stakes. Make a promise
+   the body will pay off. ("This trumpet holds a finite cup of paint — but you can never paint
+   its surface.")
+2. **Turn / build (the middle)** — deliver the actual content: the **one concrete fact / idea /
+   event**, *explained* — the what AND the why/how, with a real detail (a name, a number, a
+   mechanism, a date, a consequence). This is the part that must teach. Don't gesture ("it
+   changed everything") — show the change.
+3. **Payoff (last beat)** — resolve the hook and land the **emotion**: the click of a paradox,
+   awe at a scale, the injustice of a death, the chill of an implication. End on the feeling.
+
+**The content rules (each maps to a critic criterion):**
+- **Answer the title.** If the title teases a question or secret, the body must *reveal* it.
+  A viewer who watched only this must come away *knowing the thing*, not just intrigued.
+- **One idea, fully landed > five ideas gestured at.** Pick the single most interesting
+  fact/turn and actually explain it. Depth beats breadth in 30–40s.
+- **Name specifics.** Real names, numbers, places, mechanisms. Specificity *is* credibility and
+  *is* interest. "A 20-year-old wrote modern algebra the night before a duel" beats "a young
+  genius made discoveries".
+- **Decide the emotion per act before writing.** Write the line that *causes* the feeling — a
+  stake, a human cost, a reveal, a reversal — don't rely on the visuals to supply it.
+- **Cut filler.** Every scene must add information or feeling. If a beat does neither, delete it
+  (and let a real beat breathe instead). No "in this video", no throat-clearing intro.
+- **Front-load value.** The most interesting thing should arrive fast; retention dies on a slow
+  setup (Shorts: ~20–40s, first 3s decide).
+
+**Self-check loop (the operator's critic, run it yourself):** after `studio script`, read
+`01_script.json` and write a one-line verdict per criterion. On any fail, name what's missing
+(e.g. "criterion 2: claims Cantor 'broke math' but never says HOW — add the diagonal argument
+in 1 line") and rewrite that beat, then re-check. Only spend on `visuals` once all four pass.
+The proven-winning shapes for this channel: personal-legend genius myth (a person + a paradox +
+a cost), a single foundational paradox embodied in one object, an identity/quiz framing on real
+archetypes. Flat melancholy, pure shock-horror with no idea, and dry explainers fail the gate.
+
+---
+
 ## 1. The effect toolbox (what each is FOR, and the look that works)
 
 | animator | use it for | the recipe that looks good |
 |----------|-----------|----------------------------|
-| `parallax` | **ONLY a clear separable subject** over scenery (a figure/person/object) | **figure static, REAL background drifts** (subject inpainted out → no ghost). **NEVER on architecture/vista/crowd — it tears**; code auto-falls-back to a clean pan there. §2 |
+| `parallax` | **PERSPECTIVE / depth scenery** — landscapes with distance (mountains, clouds, skyline, houses, road) | **distinct depth planes drift at different speeds** (far slow, near fast) → real 2.5D. 🚫 **NEVER on a frame a human/animal/face/single object DOMINATES** — no depth, floats as a cutout; use `static`/`slice`/`drift` there. §2 |
 | `slice` (diag) | a dramatic *reveal* (entrance, a turn) | diagonal cut → halves offset → slide together. Pair with `cut`/`fadeblack`. §3 |
 | `slice` (horizontal+flash) | **the violent beat** (a beheading, an impact) | screen splits top/bottom + **red flash**. `motion_hint:"horizontal red flash"`. §3 |
 | `manim` | **educational/scientific ONLY** — diagrams, math, graphs, force arrows | NEVER in art/story (schematic look breaks immersion). Use real stills there. §4 |
@@ -122,7 +166,7 @@ generic motion on ordinary narrated beats (the narration/captions already carry 
 words; reach for parallax / slice / drift / static instead).
 
 ### Animator decision in one line
-> figure+landscape → `parallax` (multi-layer) · reveal → `slice` diag · violent hit →
+> depth landscape (mountains/clouds/houses) → `parallax` (multi-layer) · reveal → `slice` diag · violent hit →
 > `slice` horizontal+flash · headline → `kinetic` · drift → `motion-drift*` · calm beat
 > → **static**. (`manim` ONLY for educational/scientific videos — never art/story.)
 > Rotate them — **max 2× the same per minute.**
@@ -138,34 +182,31 @@ words; reach for parallax / slice / drift / static instead).
 
 ---
 
-## 2. parallax — figure static, REAL background drifts (the clean one)
+## 2. parallax — perspective scenery, depth planes drift (the clean one)
 
-> 🚫 **HARD RULE — parallax ONLY on a still with a clear, SEPARABLE subject (a figure,
-> a person, one object) over scenery. NEVER on architecture, vistas, crowds, or any
-> "wide empty" frame.** With no subject, `rembg` grabs a meaningless chunk and the
-> background inpaint leaves grey blobs → a **sheared, torn, broken frame** (the reported
-> glitch). The foreground and background must be **genuinely different images** (subject vs
-> subject-removed background) — never the same still cut against itself.
-> **Now enforced in code — `_parallax` has two modes, and NEVER auto-cuts a single still:**
-> - **no plate (cheap/default)** → a **clean full-image lateral pan**. Bulletproof; no holes.
-> - **plate present (balanced+)** → true layered 2.5D: subject cut from the main still, held
->   static over a **separate `scene_NN_bg.png` background plate** (same scene, subject removed)
->   that drifts behind it — two DIFFERENT images, no inpaint hole. Plates are generated by
->   `studio visuals --parallax-plates` (auto on balanced/premium); +1 still per parallax scene.
-> The torn/holed frames came from the old auto-cut-out-of-one-still path — that's removed.
-> Author `parallax` only where a real subject exists; for architecture/vista/crowd use
-> `motion-drift*`/`static` (you get the clean pan anyway).
+> 🚫 **HARD RULE (operator) — parallax is for PERSPECTIVE / DEPTH scenery, NOT a big
+> foreground subject.** Author it on landscapes with real distance — sky & clouds (far),
+> mountains / hills / a skyline (mid), houses / trees / a road / terrain (near). Those planes
+> drift at different speeds → real 2.5D depth.
+> **NEVER use parallax on a frame a human, animal, face, or one single object DOMINATES (takes
+> most of the space).** A big close subject has no depth to reveal and floats as a flat cutout —
+> it looks worse, not better. Big/close subject → `static`, `slice`, or `motion-drift*`. A
+> *small* figure inside a wide landscape is fine — it's just the nearest plane.
+> **Now enforced in code — `_parallax` has two modes, and NEVER auto-cuts a subject from a single still:**
+> - **no plate (cheap/default)** → a **clean full-image lateral pan** over the vista. Bulletproof; no holes.
+> - **plate present (balanced+)** → true layered 2.5D: held near scenery over a **separate
+>   `scene_NN_bg.png` background plate** that drifts behind it — two DIFFERENT images, no inpaint
+>   hole. Plates from `studio visuals --parallax-plates` (auto on balanced/premium); +1 still/scene.
+> The old torn/holed frames came from auto-cutting a subject out of one still — that path is removed.
 
-**What the operator wants:** a **PNG figure in front, static**, and the **background
-moving**. That is now the **default `parallax`** (`animate._parallax` → `ffmpeg.parallax_drift`),
-**when a clean subject is present**:
-- foreground = `rembg` cut-out, contained + centered + **fixed/sharp** (never moves);
-- the subject is **erased from the background** by a free blur-diffusion inpaint
-  (`_inpaint_subject`) → the background has **no ghost twin**;
-- that clean **sharp background drifts** behind the figure — `motion_hint:"right"` (default)
-  `|"left"|"up"|"down"`. Like `motion-drift*` happening only to the scenery.
-- Works best over **smooth/separable scenery** (sky, clouds, gradients) where the inpaint
-  is seamless. Verified clean on a frame-filling subject (the cat-in-clouds demo).
+**Compose the still for depth:** write the `visual_prompt` as a landscape with a clear
+foreground → midground → horizon (e.g. "low rocks in front, a valley of houses below, jagged
+peaks and drifting clouds beyond"), **not** a portrait of one big thing. The more separable the
+distance bands, the better the drift reads.
+- `motion_hint:"right"` (default) `|"left"|"up"|"down"` sets drift direction;
+- far planes should move slowly, near planes faster — author 2–3 plane PNGs for the hero shot,
+  or let the 2-plane plate mode handle the standard case;
+- works best where distance bands are distinct (sky / mountains / ground), not a flat wall.
 
 **`blurred-parallax`** = the older **soft-backdrop** look: a *blurred* copy of the still
 panned behind the figure. Default = **2-plane** (sky vs ground, opposite directions via
@@ -178,8 +219,8 @@ gives a 2-plane approximation today; true multi-plane on the clean path is **bac
 separate transparent plane PNGs). See [`parallax.md`](../../../docs/30-animation/parallax.md).
 Preview: `python examples/make_examples.py parallax` (clean) / `blurred-parallax` (soft).
 
-**Pairing:** needs a cleanly separable subject over a landscape with a horizon. Flat
-stills → weak split; use `motion_hint:"single"` or another animator.
+**Pairing:** needs a landscape with distinct distance bands (a horizon, near/far planes). Flat
+stills or big-subject portraits → weak/no depth; use `motion-drift*` or `static` instead.
 
 Tuning: `cardgen.depth_bands` (`seam`, `feather`); `ffmpeg.parallax_layers` (`bw1/bw2`
 pan room, `period`, per-layer `gblur`).
@@ -335,11 +376,11 @@ Checklist per effect:
  "narration": "..."}
 ```
 
-**A subject-over-background depth scene (parallax, bg pans right):**
+**A perspective-depth scenery scene (parallax, planes drift right):**
 ```json
 {"id": 3, "animator": "parallax", "transition": "wipeleft",
- "motion_hint": "tense slow drift right",
- "visual_prompt": "<style>, a lone figure kneeling on pale sand, clear separable subject",
+ "motion_hint": "slow drift right",
+ "visual_prompt": "<style>, wide valley landscape with clear distance: low rocks in the foreground, a town of houses in the midground, jagged peaks and drifting clouds on the horizon — NO big foreground subject",
  "narration": "..."}
 ```
 

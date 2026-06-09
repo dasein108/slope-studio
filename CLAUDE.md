@@ -13,6 +13,7 @@ Deep research + architecture rationale lives in [`docs/`](docs/) — start at `d
 | # | Stage | CLI | Input → Output |
 |---|-------|-----|----------------|
 | 1 | Script | `studio script` | idea → `01_script.json` (timed scenes + narration) |
+| 1.5 | Critic | `studio critic` | scenario → `01_critic.json` (CONTENT gate: topic revealed · fact explained · informative+interesting · emotion). `studio run` loops script↔critic to rework weak scripts before spending. LLM, ~free. |
 | 2 | Visuals | `studio visuals` | script → `02_visuals/scene_NN.png` |
 | 2.5 | Narrate | `studio narrate` | per-scene TTS → `05_voice/scenes/*.mp3` + `timing.json` + aligned `captions.srt` (runs when `voice` on; drives clip lengths) |
 | 3 | Clips | `studio clips` | images → `03_clips/scene_NN.mp4` (animator or i2v) |
@@ -33,11 +34,13 @@ The **`marketing-guru` skill** (`.claude/skills/marketing-guru/`) is the growth 
 ```
 studio/
   cli.py            typer app — every subcommand + `run` chainer + `status`
+                    + `critic` (content gate) + `_script_with_critic` (bounded script↔critic
+                      rework loop wired into `run`; --critic on|off|strict, --critic-retries)
                     + `marketing` sub-app: ideate|link|measure|learn|journal|report
                       + helpers add|backlog|recall|strategy|budget|bandit
                       + autonomous tick|autopilot
   config.py         env-key detection → default_provider(stage); free fallbacks
-  models.py         Scene, Script (pydantic) + timing validation
+  models.py         Scene, Script (pydantic) + timing validation + CriticVerdict/CriterionScore (1.5 gate)
   manifest.py       Manifest/StageRecord — project.json read/write, cost rollup
   paths.py          canonical runs/<id>/ artifact paths
   canvas.py         live render W×H; set_from_aspect(aspect) at each rendering stage →
@@ -46,7 +49,7 @@ studio/
   ffmpeg.py         ALL ffmpeg shelling: normalize/ken_burns/motion/still/kinetic/parallax/
                     parallax_layers/diag_slice/atmosphere/concat_xfade_seq/mux/burn/encode
   animate.py        free animators dispatch: kenburns|motion-*|kinetic|parallax|blurred-parallax|slice|static|puppet|talkinghead|manim
-                    parallax = static subject + REAL bg drift; uses two real plates (fg transparent + bg) when present, else a gated clean-subject cut + inpaint; SCENERY (image_role bg) & gate-fails → sharp drift (no tear). blurred-parallax = old blurred panning planes
+                    parallax = PERSPECTIVE/DEPTH scenery (mountains/clouds/houses) — depth planes drift; NOT for big foreground subjects (human/animal/single object dominating → floats as cutout; use static/slice/drift). Two real plates (near + bg) when present, else clean full-frame pan (no tear). blurred-parallax = old blurred panning planes
                     + atmosphere overlay post-pass (rain|snow|embers|blood|petals|leaves|wind|fog)
                     + fx look post-pass (Scene.fx): grain|vignette|chroma|glitch|sunrise|sunset|godrays|oldfilm|flash[-white|-yellow|-red|-black]
                     puppet = rembg cutout figure motion (idle/hop/shake/nod head)
@@ -58,7 +61,9 @@ studio/
                     atmosphere/fx) + taste caps (flash once; thin blanket atmosphere). This
                     is what makes the effect library actually get USED (not just kenburns) —
                     runs in stages/script.py for BOTH the LLM and offline stub paths.
-  stages/<stage>.py one pure function per stage (incl. narrate.py)
+  stages/<stage>.py one pure function per stage (incl. narrate.py + critic.py — the 1.5
+                    content gate: LLM scores the scenario → CriticVerdict; NOT in STAGE_ORDER
+                    (it's a script sub-step, looped by cli._script_with_critic))
   providers/
     base.py         GenResult(path, cost_usd, latency_s, provider, note)
     llm.py          script: stub|ollama|groq|openrouter|openai|gemini
@@ -195,7 +200,7 @@ Chosen by which keys are present in `.env`, else free fallback:
 - **`kinetic` over a `card` image double-renders the headline** (card bakes text). Pair `kinetic` with `fal-nanobanana` illustrations. See `docs/30-animation/kinetic.md`.
 - **`local-i2v` = FREE local video gen via ComfyUI** (`studio clips --video-provider local-i2v --model wan-local|ltx-local`, or `studio run --video-provider local-i2v`). Needs a running ComfyUI server (default `http://127.0.0.1:8188`) + bf16 models on disk. **Use bf16, NOT fp8 — fp8 is broken on Metal/MPS.** It's a DRAFT tier: minutes per clip. `auto` strategy caps local AI scenes at `local_max_clips=6` (free per-clip cost would otherwise pick every scene → hours); `all` is uncapped (explicit). Clips capped 5s; render res = canvas aspect at longest-side 832 (`video._local_dims`). Workflow templates in `providers/workflows/*.json`; model filenames auto-filled from the live `/object_info`. ⚠️ 32 GB RAM is tight for Wan 5B fp16 + umt5 fp16 (~22 GB) — close other apps or it OOMs/swaps.
 - **`parallax`/`manim` need optional extras** (`.[parallax]`, `.[manim]`); both fall back to `kenburns` (recorded in the manifest note) if missing/failing — pipeline never breaks. `slice` needs no extra.
-- **`parallax` = static sharp subject + REAL background drifting**, with a layer-source priority (`animate._parallax`): (1) **two real plates** — a transparent `_fg.png` subject over a clean `_bg.png` (subject re-rendered out) → composited directly, **no inpaint, no tear** (balanced+ default; `studio visuals --parallax-plates --parallax-fg`); else (2) **scenery** (`image_role:"bg"`, no subject) → a **sharp full-frame drift** (never subject-inpainted — that's what used to tear a minaret skyline into a smeared vertical seam); else (3) a **gated** clean-subject cut + `_inpaint_subject` (gate `_clean_subject` rejects thin verticals / edge-hugging / fragmented masks); else (4) sharp drift. Direction from `motion_hint` (`right`/`left`/`up`/`down`). **Quality bar: aim for LAYERED depth — every `parallax` scene = ≥2 clean plates (fg+bg, balanced+ default); reach for 3 planes (hand-author a midground PNG; `parallax_drift` takes a per-plane `depth`) on the hero/establishing shot. Prefer layered parallax over a flat single drift where the beat earns depth.** **`blurred-parallax`** = the old soft look (blurred panning planes, `gblur` hides the ghost) — its 2-plane sky/ground mode is a free layered-depth shortcut for scenery. See `docs/30-animation/parallax.md`.
+- **`parallax` = PERSPECTIVE / DEPTH scenery (mountains, clouds, houses, skyline) — depth planes drift at different speeds.** 🚫 **Do NOT author it on a frame a human / animal / face / single object DOMINATES** (takes most of the space): a big close subject has no depth to reveal and floats as a flat cutout — use `static` / `slice` / `motion-drift*` there. A *small* figure inside a wide landscape is fine (it's the nearest plane). Compose the still as foreground→midground→horizon, not a portrait. Layer-source priority (`animate._parallax`): (1) **two real plates** — held near scenery over a clean `_bg.png` plate → composited directly, **no inpaint, no tear** (balanced+ default; `studio visuals --parallax-plates`); else (2) a **clean full-frame pan** over the vista (never subject-inpainted — that's what used to tear a skyline into a smeared seam). Direction from `motion_hint` (`right`/`left`/`up`/`down`). **Quality bar: aim for LAYERED depth — ≥2 clean planes; reach for 3 (hand-author far/mid/near PNGs; `parallax_drift` takes a per-plane `depth`) on the hero/establishing landscape.** **`blurred-parallax`** = the old soft look (blurred panning planes) — its 2-plane sky/ground mode is a free layered-depth shortcut for scenery. See `docs/30-animation/parallax.md`.
 - **`manim_code` must be authored flush-left** (or consistently indented); `animate._manim` dedents+reindents, but mixed indentation breaks it. Make vector effects **literal** (real path/silhouette/flash), not abstract lines. See `docs/30-animation/manim.md`.
 - **Captions are OFF by default** — YouTube/TikTok auto-generate them and a burned wall of text covers the visuals. `narrate` still writes `captions.srt` (upload as a sidecar). Opt in with `--captions burn`. When burned, `cardgen.caption_strip` is **fill-width wrapped (fewest lines) + font-shrunk to a ~22%-of-H budget + hard height-capped**, overlaid at `H-h-(~0.115*H)`, so the block can NEVER clip top or bottom in any aspect. (Past bug: long 150-char sentence cues rendered at near-full font across 7 lines and overflowed.) See `docs/30-animation/captions.md`.
 - **fal/Nano-Banana blocks overt violence/gore** (bound prisoner, severed head, blood) → returns no media → that scene stubs (1-color 10 KB PNG). Imply violence symbolically; let narration carry it. Rewrite flagged prompts and re-`--force` visuals.

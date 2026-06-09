@@ -20,6 +20,11 @@ def script_json(d: Path) -> Path:
     return d / "01_script.json"
 
 
+def critic_json(d: Path) -> Path:
+    """Critic-gate verdict for the current scenario (stage 1.5)."""
+    return d / "01_critic.json"
+
+
 def visuals_dir(d: Path) -> Path:
     return d / "02_visuals"
 

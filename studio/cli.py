@@ -15,6 +15,7 @@ from studio import config, manifest, paths, tiers
 from studio.providers import audio as audio_costs  # expected_music_cost for whole-video budgeting
 from studio.stages import audio as audio_stage
 from studio.stages import clips as clips_stage
+from studio.stages import critic as critic_stage
 from studio.stages import metadata as metadata_stage
 from studio.stages import narrate as narrate_stage
 from studio.stages import publish as publish_stage
@@ -73,6 +74,90 @@ def script(run_id: str, provider: Optional[str] = None) -> None:
     m.record("script", done=True, provider=prov, cost_usd=cost, latency_s=lat, n=len(s.scenes))
     manifest.save(d, m)
     console.print(f"[green]script[/] {len(s.scenes)} scenes via {prov}")
+
+
+def _print_verdict(v) -> None:
+    """Render a CriticVerdict to the console."""
+    head = "[green]PASS[/]" if v.passed else "[red]DECLINE[/]"
+    console.print(f"[bold]critic[/] {head} — {v.summary}")
+    for c in v.scores:
+        mark = "[green]✓[/]" if c.passed else "[red]✗[/]"
+        console.print(f"  {mark} {c.name} ({c.score}/5): {c.feedback}")
+    if not v.passed and v.revision_notes:
+        console.print(f"  [yellow]revision:[/] {v.revision_notes}")
+
+
+@app.command()
+def critic(run_id: str, provider: Optional[str] = None) -> None:
+    """Stage 1.5 — score the current scenario for CONTENT (topic revealed · fact explained ·
+    informative+interesting · emotional payoff) BEFORE spending on visuals/clips."""
+    from studio.models import Script
+
+    d, m = _load(run_id)
+    prov = provider or config.default_provider("script")
+    s = Script.model_validate_json(paths.script_json(d).read_text())
+    v, lat, cost = critic_stage.run(d, s, prov)
+    note = "pass" if v.passed else f"decline: {v.summary}"
+    m.record("critic", done=v.passed, provider=prov, cost_usd=cost, latency_s=lat, note=note)
+    manifest.save(d, m)
+    _print_verdict(v)
+    if not v.passed:
+        raise typer.Exit(1)
+
+
+def _script_with_critic(rid: str, sp: str, mode: str, retries: int,
+                        critic_provider: Optional[str] = None):
+    """script → critic gate → re-script with feedback, up to `retries` times.
+
+    mode: "off" (skip the gate) · "on" (gate; on exhaustion KEEP the best attempt and proceed) ·
+    "strict" (gate; on exhaustion ABORT the run). Returns the chosen CriticVerdict or None.
+    Never loops unbounded — at most `retries`+1 script generations.
+    """
+    if mode == "off" or sp == "stub":
+        script(rid, sp)
+        return None
+    cprov = critic_provider or sp
+    d, m = _load(rid)
+    s, lat, cost = script_stage.run(d, m.idea, m.duration_s, m.aspect, m.voice, m.style, sp)
+    m.record("script", done=True, provider=sp, cost_usd=cost, latency_s=lat, n=len(s.scenes))
+    manifest.save(d, m)
+    console.print(f"[green]script[/] {len(s.scenes)} scenes via {sp}")
+
+    best, best_script, best_attempt = None, None, None
+    vlat = 0.0
+    for attempt in range(retries + 1):
+        v, vlat, vcost = critic_stage.run(d, s, cprov)
+        _print_verdict(v)
+        if best is None or v.total > best.total:  # snapshot the best-scoring attempt's script
+            best, best_script, best_attempt = v, s, attempt + 1
+        if v.passed:
+            m.record("critic", done=True, provider=cprov, cost_usd=vcost, latency_s=vlat,
+                     note=f"pass (attempt {attempt + 1})")
+            manifest.save(d, m)
+            return v
+        if attempt < retries:  # rewrite addressing the feedback, then re-critique
+            console.print(f"[yellow]» re-script (critic attempt {attempt + 2}/{retries + 1})[/]")
+            s, lat, cost = script_stage.run(d, m.idea, m.duration_s, m.aspect, m.voice,
+                                            m.style, sp, revision_notes=v.revision_notes)
+            m.record("script", done=True, provider=sp, cost_usd=cost, latency_s=lat, n=len(s.scenes))
+            manifest.save(d, m)
+
+    # retries exhausted, still failing — the best attempt may not be the one on disk now
+    if best_script is not None:
+        paths.script_json(d).write_text(best_script.model_dump_json(indent=2))
+    if mode == "strict":
+        m.record("critic", done=False, provider=cprov, latency_s=vlat,
+                 note=f"FAILED after {retries + 1} attempts: {best.summary}")
+        manifest.save(d, m)
+        console.print(f"[red]critic gate failed after {retries + 1} attempts — aborting "
+                      f"(--critic strict).[/] Best was attempt {best_attempt} ({best.total}/20).")
+        raise typer.Exit(1)
+    console.print(f"[yellow]critic still failing after {retries + 1} attempts — proceeding with "
+                  f"best (attempt {best_attempt}, {best.total}/20). Review the scenario.[/]")
+    m.record("critic", done=False, provider=cprov, latency_s=vlat,
+             note=f"proceed-best attempt {best_attempt} ({best.total}/20): {best.summary}")
+    manifest.save(d, m)
+    return best
 
 
 @app.command()
@@ -293,12 +378,20 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
         ai_scenes: Optional[str] = None,
         publish_to: Optional[str] = None, privacy: str = "public", channel: str = "",
         from_stage: str = "script", to_stage: str = "save",
-        run_id: Optional[str] = None, max_cost: float = 3.0) -> None:
+        run_id: Optional[str] = None, max_cost: float = 3.0,
+        critic: str = "on", critic_retries: int = 2,
+        critic_provider: Optional[str] = None) -> None:
     """Full pipeline idea -> master (+ optional publish), with resume.
 
     --tier free|cheap|balanced|premium sets all stage providers + video strategy;
     any --*-provider / --video-strategy / --video-model flag overrides the preset.
     Spend is capped by --max-cost (0 disables); the clips stage trims/aborts to fit.
+
+    --critic on|off|strict gates the SCENARIO on content (topic revealed · fact explained ·
+    informative+interesting · emotion) before any paid visuals/clips. "on" (default) reworks
+    the script up to --critic-retries times, then proceeds with the best attempt; "strict"
+    aborts if it still fails; "off" skips the gate. Cheap (LLM-only); --script-provider stub
+    skips it. This is what stops the cron autopilot shipping uninformative videos.
     """
     p = tiers.preset(tier)
     # script falls through to the real-LLM default unless the tier pins it (free→stub).
@@ -327,7 +420,7 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
             continue
         console.print(f"[bold cyan]» {stage}[/]")
         if stage == "script":
-            script(rid, sp)
+            _script_with_critic(rid, sp, critic, critic_retries, critic_provider)
         elif stage == "visuals":
             # balanced+ → generate separate fg (transparent subject) + bg (subject removed)
             # plates so parallax composites two REAL images (no inpaint, no torn frame);

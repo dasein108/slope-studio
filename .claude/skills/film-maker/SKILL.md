@@ -143,6 +143,44 @@ cat runs/$RID/01_script.json | jq '.scenes | length, .scenes[0]'   # inspect sce
 Check: scenes tile [0, duration] with no gaps; each ≤8s; narration present if voice.
 Timing warnings print to stderr.
 
+### ①.5 critic — gate the scenario BEFORE spending on visuals/clips
+
+> ⚠️ **RULE — never render visuals/clips on a weak scenario.** A wired-but-empty video
+> (vague narration, no real content, no feeling) is the #1 failure. After `script`, **read
+> `01_script.json` end-to-end and score it against the four criteria below.** If it fails any,
+> **rework the scenario and re-script — do not proceed to `visuals`.**
+
+The critic checklist (all four must pass):
+1. **Topic revealed?** — Does the piece actually deliver on its title/promise? A viewer who
+   only saw this must come away *knowing the thing the title teased*, not just hearing it
+   gestured at. (If the title asks a question, the body must ANSWER it.)
+2. **A concrete fact / thought / event, explained?** — Is there ≥1 specific, nameable fact,
+   idea, or moment (a number, a name, a date, a mechanism, a turning point) that is **stated
+   AND explained** — not just asserted? Vague "it changed everything" with no *what/why* fails.
+3. **Informative AND interesting?** — Does it teach something a smart viewer didn't already
+   know, framed with a real curiosity gap? If it's hollow (filler, generic, obvious) → **decline
+   with written feedback** naming exactly what's missing, then rewrite.
+4. **Emotional payoff?** — What does the viewer FEEL (awe, dread, injustice, wonder, the click
+   of a paradox)? Name the intended emotion per act. If the arc is flat / emotionless → **decline
+   with feedback** and add the missing beat (a stake, a twist, a human cost, a reveal).
+
+Write the verdict explicitly (PASS, or DECLINE + per-criterion feedback). On decline, edit
+`01_script.json` (or re-run `studio script` with a sharper idea/outline) and re-critique until
+it passes. Only then run `visuals`. Authoring patterns that pass this bar: guides §0.5.
+
+**This gate is also wired into the CLI** (so headless `studio run` / the cron autopilot get it too):
+```bash
+studio critic $RID                       # score the current scenario → 01_critic.json (exit 1 if it fails)
+studio run "idea" --critic on            # DEFAULT: gate + auto-rework the script up to --critic-retries (2),
+                                         #   then proceed with the best attempt
+studio run "idea" --critic strict        # abort the run if it still fails after retries
+studio run "idea" --critic off           # skip the gate
+#   --critic-provider <llm>  picks the judge LLM (defaults to the script provider)
+```
+The CLI judge applies the SAME four criteria; `--script-provider stub` skips it (wiring-only).
+When you're driving by hand, still do the agent critique above — your judgment is sharper than
+the in-code judge; the CLI gate is the safety net for unattended runs.
+
 ### ② visuals
 ```bash
 studio visuals $RID --provider fal-nanobanana   # or stub (offline) | pollinations
@@ -239,20 +277,24 @@ Each scene in `01_script.json` controls its own look — set by the script autho
 Transitions are overlap-compensated → video stays synced to narration (no drift).
 `animator` applies to FREE scenes; AI scenes use `fal-i2v` (paid). Mix freely.
 
-> ⚠️ **RULE — `parallax` has TWO modes; it NEVER cuts a subject out of a single still.**
-> The old auto rembg-cut-out (subject frozen in the middle, background inpainted + drifted)
-> produced **torn frames and a moving "hole" around the centre** on subjectless stills — so
-> it's gone. Now:
-> - **Default (cheap / no plate):** `parallax` = a **clean full-image lateral pan** (a camera
->   move over the whole still). Always safe, never holes/tears. For architecture/vista/crowd
->   beats this is exactly right (or just use `motion-drift*`/`static`).
-> - **Layered 2.5D (balanced+):** `studio run --tier balanced|premium` (or `studio visuals
->   --parallax-plates`) generates a **separate background plate** (`scene_NN_bg.png`, the same
->   scene with the subject removed) for each parallax scene. Then the subject is cut from the
->   main still and held static while the **plate drifts behind it** — two genuinely DIFFERENT
->   images, so real depth with **no inpaint hole**. +1 paid still per parallax scene.
-> Either way: author `parallax` on scenes that have a clear separable subject; the foreground
-> and background are always different images, never the same still cut against itself.
+> ⚠️ **RULE — `parallax` is for PERSPECTIVE / DEPTH scenery, NOT a big foreground subject.**
+> Author it on frames built from **receding depth planes** — sky & clouds (far), mountains /
+> hills / a city skyline (mid), houses / trees / a road / terrain (near) — so the planes drift
+> at different speeds and read as real 2.5D depth.
+> - 🚫 **Do NOT use `parallax` on a frame that a human, animal, face, or one single object
+>   DOMINATES (takes most of the space).** A big close subject has no depth to reveal and just
+>   floats as a flat cutout — it looks worse, not better. For a big/close subject use `static`,
+>   `slice`, or `motion-drift*` instead. A *small* figure inside a deep landscape is fine — it
+>   simply becomes the nearest plane.
+> - It NEVER cuts a subject out of a single still (the old auto rembg-cut tore frames — gone).
+>   **Default (no plate):** a clean full-image lateral pan over the whole vista — safe anywhere.
+>   **Layered 2.5D (balanced+):** `studio run --tier balanced|premium` (or `studio visuals
+>   --parallax-plates`) renders a separate `scene_NN_bg.png` plate that drifts behind the held
+>   near elements — two DIFFERENT images, real depth, no hole. For the strongest perspective,
+>   author **2–3 distinct planes** (e.g. cloud layer / mountain layer / foreground) as separate
+>   PNGs, or use `blurred-parallax` for a free 2-plane sky-vs-ground depth.
+> Compose the visual prompt as a **landscape with clear distance** (foreground, midground,
+> horizon), not a portrait of one thing.
 
 > ⚠️ **RULE — `pulse` and `kinetic` are OFF by default; use only on explicit need.**
 > - `motion-pulse` (breathing zoom) reads as twitchy/epileptic — **never** reach for it

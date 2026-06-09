@@ -1,6 +1,15 @@
 # Parallax (`animator: "parallax"` and `"blurred-parallax"`)
 
-Depth illusion: a **static sharp foreground subject** in front of a **moving background**.
+Depth illusion: **perspective scenery whose distance planes drift at different speeds** (far
+slow, near fast) → real 2.5D depth.
+
+> 🚫 **OPERATOR RULE — parallax is for PERSPECTIVE / DEPTH scenery (mountains, clouds, a
+> skyline, houses, a road), NOT a big foreground subject.** A frame that a human, animal, face,
+> or one single object DOMINATES (takes most of the space) has no depth to reveal and floats as
+> a flat cutout — it looks worse, not better. Big/close subject → `static`, `slice`, or
+> `motion-drift*`. A *small* figure inside a wide landscape is fine (it's just the nearest
+> plane). Compose the still as foreground → midground → horizon, not a portrait of one thing.
+
 Two flavours:
 
 | animator | background | use |

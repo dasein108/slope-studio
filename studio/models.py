@@ -85,3 +85,38 @@ class Script(BaseModel):
                 problems.append(f"scene {s.id}: non-positive duration")
             cursor = s.end_s
         return problems
+
+
+# ---- critic gate (stage 1.5): score the scenario before spending on visuals ----
+# The four content criteria a scenario must satisfy before it's worth rendering.
+# Keys are stable (used in feedback notes); labels are shown to the operator.
+CRITIC_CRITERIA: dict[str, str] = {
+    "topic_revealed": "Does it deliver on the title/promise — viewer comes away KNOWING the thing?",
+    "fact_explained": "Is there >=1 concrete fact/idea/event STATED and EXPLAINED (the what AND why/how)?",
+    "informative_interesting": "Does it teach something non-obvious with a real curiosity gap?",
+    "emotional_payoff": "Does it land a clear emotion (awe/dread/injustice/paradox-click)?",
+}
+
+
+class CriterionScore(BaseModel):
+    """One critic criterion's verdict."""
+    name: str                  # one of CRITIC_CRITERIA keys
+    passed: bool = False
+    score: int = 0             # 1-5 (used to pick the best attempt across retries)
+    feedback: str = ""         # what's missing / how to fix (drives the rewrite)
+
+
+class CriticVerdict(BaseModel):
+    """The critic stage output for one scenario attempt (persisted to 01_critic.json)."""
+    passed: bool = False                                  # all criteria passed
+    scores: list[CriterionScore] = Field(default_factory=list)
+    revision_notes: str = ""                              # concrete instructions for the rewrite
+    summary: str = ""
+
+    @property
+    def total(self) -> int:
+        """Sum of per-criterion scores — ranks attempts when none fully passes."""
+        return sum(c.score for c in self.scores)
+
+    def failures(self) -> list[CriterionScore]:
+        return [c for c in self.scores if not c.passed]
