@@ -21,6 +21,7 @@ Every subcommand + the `run` chainer + `status` + the `marketing` sub-app.
 |---------|---------|
 | `init idea [--duration --aspect --voice --style --tier --run-id]` | Create run dir + manifest |
 | `script run_id [--provider]` | Stage 1 — idea → timed scenario |
+| `critic run_id [--provider]` | Stage 1.5 — content gate; score scenario → `01_critic.json` (exit 1 on fail) |
 | `visuals run_id [--provider --cheap-provider --char-ref --force --parallax-plates]` | Stage 2 — keyframe per scene (hero vs bg split) |
 | `narrate run_id [--provider --voice --tone]` | Stage 2.5 — per-scene TTS + `timing.json` + captions |
 | `clips run_id [--strategy --model --ai-scenes --max-cost --force]` | Stage 3 — video clips, budget-gated |
@@ -97,6 +98,7 @@ Unknown → 9:16.
 | Module | Reads | Writes | Provider(s) | Idempotent |
 |--------|-------|--------|-------------|------------|
 | `script.py` | (idea args) | `01_script.json` | llm / stub | overwrite |
+| `critic.py` | `01_script.json` | `01_critic.json` (`CriticVerdict`) | llm judge / stub auto-pass | overwrite; NOT in `STAGE_ORDER` — script sub-step, looped by `cli._script_with_critic` |
 | `visuals.py` | `01_script.json` | `02_visuals/scene_NN.png` (+`_bg.png` if parallax-plates) | image / cheap split by `image_role` | skip-if-exists, `--force` |
 | `narrate.py` | `01_script.json` | per-scene mp3, `timing.json`, `captions.srt` | tts (edge/openai) | one-shot |
 | `clips.py` | script, visuals, `timing.json` | `03_clips/scene_NN.mp4` | fal-i2v / animate | skip-if-exists, `--force`, budget-gated |
@@ -170,7 +172,7 @@ OAuth token, adding `yt-analytics.readonly`.
 
 ### `animate.py` — free animator dispatch
 `render(animator, ...)` branches: `static`/`none`/`hold`, `kenburns`(default), `motion-*`,
-`kinetic`, `parallax` (sharp subject + inpainted bg drift), `blurred-parallax`, `slice`,
+`kinetic`, `parallax` (perspective/depth SCENERY — planes drift; NOT for dominant subjects, guarded in `artdirect.py`), `blurred-parallax`, `slice`,
 `puppet`/`cutout`, `talkinghead` (Rhubarb lip-sync), `manim`, unknown→kenburns. Post-passes:
 `Scene.atmosphere` (particle overlay) then `Scene.fx`
 (grain/vignette/chroma/glitch/sunrise/sunset/godrays/flash-*). Any failure → kenburns

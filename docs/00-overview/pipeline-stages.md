@@ -15,6 +15,10 @@ is what makes "decomposed CLI scripts" and "single pipeline" the same thing.
 `narrate` (2.5) and `audio` (5b) run only when voice is on. `metadata` (6.5) and `publish` (7)
 run only when a publish target is requested. Numbering below matches the conceptual stages.
 
+`critic` (1.5) is a **content gate** that runs after `script` but is **not in `STAGE_ORDER`** —
+it's a sub-step `studio run` loops with `script` (rework on decline) rather than a linear stage,
+so the resume/skip and `--from-stage` indexing stay simple.
+
 ## Artifact-passing model
 
 A single run lives in one directory, `runs/<id>/`. Stages communicate through files + the
@@ -64,6 +68,22 @@ renders it.
 - **Provider:** LLM (`openai`/`gemini`/`groq`/`openrouter`/`ollama`) or `stub` (offline split).
 - See [`../30-animation/scenario-schema.md`](../30-animation/scenario-schema.md) for the
   authoritative `01_script.json` schema.
+
+### Stage 1.5 — Critic (`critic`)
+- **In:** `01_script.json`.
+- **Out:** `01_critic.json` — a `CriticVerdict`: per-criterion `{passed, score 1-5, feedback}`
+  for **topic_revealed · fact_explained · informative_interesting · emotional_payoff**, an
+  overall `passed`, and `revision_notes`. A CONTENT gate — judges substance (narration), not
+  visuals — so a technically-perfect but empty scenario is caught before any paid render.
+- **Provider:** LLM-as-judge (`config.default_provider("script")` by default, or
+  `--provider`/`--critic-provider`). `stub` auto-passes (wiring-only scenario).
+- **Not in `STAGE_ORDER`** — it's a sub-step of script. `studio run` runs a **bounded
+  `script ↔ critic` rework loop** (`cli._script_with_critic`): on a decline it re-scripts with
+  the feedback injected, up to `--critic-retries` (2) times, then proceeds with the
+  best-scoring attempt (`--critic on`) or aborts (`--critic strict`); `--critic off` skips it.
+  The headless cron autopilot inherits the gate (it subprocess-calls `studio run`).
+- ⚠️ **The critic only judges CONTENT.** Visual defects (e.g. a bad parallax composite) are
+  caught by the art-direction guards in `artdirect.py`, not here.
 
 ### Stage 2 — Visuals (`visuals`)
 - **In:** `01_script.json`, optional `--char-ref`.

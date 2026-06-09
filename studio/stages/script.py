@@ -37,9 +37,11 @@ ART DIRECTION (free motion + looks — pick per scene from these menus; a heuris
 fills anything you omit, so only set what clearly fits, and VARY it across scenes):
 - "animator" (how the still moves, all free):
   kenburns (gentle pan/zoom, safe default) · motion-driftleft/driftright/driftup/driftdown
-  (lateral drift) · motion-zoomin/zoomout · parallax (PREMIUM layered depth — a clear
-  foreground subject stays sharp while a real background drifts; favor it on hero/scenery
-  beats over a flat drift, the pipeline builds real fg+bg plates so it's true 2.5D) · kinetic (slides a
+  (lateral drift) · parallax (PERSPECTIVE/DEPTH scenery ONLY — a landscape with real distance:
+  mountains, clouds, a skyline, houses, a road. The depth planes drift for true 2.5D. NEVER use
+  parallax on a scene a PERSON/animal/face or one big object DOMINATES the frame — there is no
+  depth to show and it tears into a ghost/cutout. For a character/portrait scene use motion-drift*
+  or static instead. Reserve parallax for image_role:"bg" establishing/scenery beats) · kinetic (slides a
   big on-screen HEADLINE — use ONLY on the opening hook or a scene built around short text)
   · slice (a split-and-slide reveal at a hard cut) · static (a held shot — good for an
   outro/CTA). Spread these out; don't repeat one animator every scene.

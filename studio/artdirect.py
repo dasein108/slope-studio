@@ -52,9 +52,12 @@ _MOOD: list[tuple[tuple[str, ...], str, list[str]]] = [
     (("glitch", "digital", "data", "code", "cyber", "hack", "signal"), "", ["glitch"]),
 ]
 
-# rotation for body scenes — varied motion that includes true-depth parallax periodically.
-_BODY_CYCLE = ["motion-driftright", "parallax", "kenburns", "motion-driftleft",
-               "motion-zoomin", "parallax", "motion-driftup", "kenburns"]
+# rotation for BODY scenes (a character/subject is present) — lateral motion + held stills only.
+# Deliberately NO parallax here: parallax on a dominant subject tears into a ghost/cutout
+# (it's reserved for subjectless scenery, see _is_scenery + the guard in decorate()). Also no
+# zoom (operator: twitchy/epileptic).
+_BODY_CYCLE = ["motion-driftright", "slice", "kenburns", "motion-driftleft",
+               "static", "motion-driftup", "kenburns", "motion-driftdown"]
 _DIRS = ("left", "right", "up", "down")
 
 
@@ -101,6 +104,16 @@ def decorate(script: Script) -> Script:
 
         # 1) validate whatever the model (or a hand author) already set
         sc.animator = sc.animator if sc.animator in ANIMATORS else ""
+        # HARD GUARD: parallax/blurred-parallax are for subjectless PERSPECTIVE scenery only.
+        # On a scene with a dominant subject (a character/hero — anything not image_role:"bg")
+        # the plate composite tears into a ghost-twin/cutout. Downgrade a bad pick to a lateral
+        # drift so a person scene never gets parallax, whoever (LLM or author) set it.
+        if sc.animator in ("parallax", "blurred-parallax") and not _is_scenery(sc):
+            sc.animator = "motion-driftright" if i % 2 == 0 else "motion-driftleft"
+        # operator-banned: zoom in/out + pulse read as twitchy/epileptic. Strip whatever set
+        # them (LLM or author) → a lateral drift. Lateral motion only.
+        if sc.animator in ("motion-zoomin", "motion-zoomout", "motion-pulse"):
+            sc.animator = "motion-driftright" if i % 2 == 0 else "motion-driftleft"
         # atmosphere survives only if it's valid AND the scene literally calls for it —
         # the model loves to sprinkle embers/snow/rain on scenes that don't need them.
         sc.atmosphere = (sc.atmosphere if sc.atmosphere in ATMOS
