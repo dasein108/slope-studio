@@ -329,9 +329,11 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
         if stage == "script":
             script(rid, sp)
         elif stage == "visuals":
-            # balanced+ → generate separate bg plates so parallax is true layered 2.5D
-            # (different fg/bg images); cheap/free → single image (parallax = clean pan).
-            visuals(rid, ip, icp, char_ref, False, parallax_plates=tier in ("balanced", "premium"))
+            # balanced+ → generate separate fg (transparent subject) + bg (subject removed)
+            # plates so parallax composites two REAL images (no inpaint, no torn frame);
+            # cheap/free → single image (parallax = layered drift / clean pan).
+            plates = tier in ("balanced", "premium")
+            visuals(rid, ip, icp, char_ref, False, parallax_plates=plates, parallax_fg=plates)
         elif stage == "narrate":
             if with_voice:
                 narrate(rid, vp, voice_name, tone)

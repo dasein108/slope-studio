@@ -28,14 +28,25 @@ These come from direct feedback — treat as **hard defaults** unless the user s
 1. **Use lots of motion, cheaply.** Favor `parallax`, `slice`, `kinetic`,
    `motion-drift*`, and honest `static` over plain zoom. A static-*feeling* Short is a
    failure — but a *deliberate* static still is fine (see #5).
-1a. **DEFAULT to `motion-drift*` for moving scenery; do NOT reach for bare `parallax`.**
-   `parallax` auto-extracts a foreground (rembg) and **tears/holes the frame** on any still
-   without a clean plate — the operator has flagged this **twice** (latest: a robed figure at
-   a door → smeared/holed). Use `parallax` ONLY (a) with `--parallax-plates` (balanced+, a
-   real separate bg plate), or (b) on a **subjectless vista** where it degrades to a clean
-   full-image pan (operator liked that on a golden-city closing beat). **Never author bare
-   `parallax` on a still that has a clear figure/subject** — drift it, or build a deliberate
-   plated foreground. When in doubt, `motion-drift{left,right,up,down}`.
+1a. **PREFER quality, LAYERED parallax (2–3 planes) for depth — but only the PLATED kind.**
+   True 2.5D depth is the most premium *free* look in the kit, so reach for it on hero /
+   establishing / scenery beats instead of settling for a flat single drift. "Quality
+   layered" means **distinct planes moving at different rates**, built from REAL images, not
+   one torn still:
+   - **2 planes (the standard, balanced+ default):** a static foreground subject over a clean,
+     separately-rendered background. Generate both plates with `--parallax-plates --parallax-fg`
+     (auto on balanced/premium) so it composites two real images — **no inpaint, no tear**.
+   - **3 planes (the premium reach):** add a midground so far/mid/near drift at different
+     speeds (sky slow, hills medium, subject static). Today that means **authoring the extra
+     plane as its own transparent PNG** and composing it (`ffmpeg.parallax_drift` takes a
+     per-plane `depth`); for atmospheric scenery, `blurred-parallax` already gives a free
+     2-plane (sky vs ground, opposite directions) — use it when you want soft depth fast.
+   - **Aim for 2 clean planes minimum on any parallax scene; reach for 3 on the hero shot.**
+   **The one hard NO:** never author **bare plateless `parallax`** on a still with a clear
+   figure/subject — rembg auto-extraction **tears/holes the frame** (operator flagged twice;
+   a robed figure at a door → smeared). No plate + a real subject → use `motion-drift*` instead.
+   A subjectless vista safely degrades to a clean full-image pan. When in doubt between cheap
+   options, `motion-drift{left,right,up,down}`; when the beat deserves depth, invest in plates.
 1b. **NO schematic / vector drawings in art or story videos.** `manim` (shapes,
    diagrams, geometric silhouettes) is **only** for informative / educational /
    scientific pieces. In a story/cinematic video, render every beat as a real

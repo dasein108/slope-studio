@@ -15,29 +15,38 @@ uv pip install -e ".[parallax]"     # rembg + onnxruntime (first run caches u2ne
 
 ## `parallax` — TRUE parallax (the clean one)
 
-`animate._parallax`:
-1. `rembg.remove(still)` → the **sharp cut-out subject** (transparent background), held
-   **static and centered** — it never moves.
-2. **The subject is erased from the background** by a free blur-diffusion inpaint
-   (`_inpaint_subject`: repeatedly blur, restamp the known pixels → the subject hole fills
-   with the surrounding colours). On smooth backgrounds (sky, clouds, walls) this is
-   invisible; on busy backgrounds it's approximate.
-3. `ffmpeg.parallax_drift` scales that clean background slightly larger and **drifts it
-   steadily** behind the static foreground.
+`animate._parallax` picks the best layer source available, in priority order:
 
-Result: foreground STAYS, background MOVES — like `motion-driftright` happening *only* to
-the scenery, with the subject pinned in front. **No ghost twin** (the subject isn't in the
-background any more).
+1. **Two real plates (gold).** If a transparent `scene_NN_fg.png` (subject keyed out) AND a
+   clean `scene_NN_bg.png` (subject re-rendered out) both exist, it composites those two
+   REAL images directly via `ffmpeg.parallax_drift` — **zero inpaint, zero tear**. This is
+   the balanced+ default: `studio run` (and `studio visuals --parallax-plates
+   --parallax-fg`) generate both plates for every `parallax` scene.
+2. **Scenery → sharp drift.** A scene with `image_role:"bg"` (skyline, landscape — *no*
+   separable subject) is **never** subject-inpainted. It falls to a **sharp full-frame
+   drift** (`ffmpeg.motion`) that keeps every detail crisp. For the soft 2.5D depth look on
+   scenery, ask for `blurred-parallax` explicitly.
+3. **Clean cut + auto-inpaint (no plates).** Only when `rembg` finds a **single compact
+   subject** (gate `_clean_subject`: rejects thin verticals like minarets, edge-hugging
+   masks touching 3+ borders, and fragmented masks). It cuts the subject, erases its hole
+   from the background by free blur-diffusion (`_inpaint_subject`), and drifts the filled
+   plane behind the static subject.
+4. **Last resort → sharp drift.** Anything that fails the gate drifts the whole sharp still
+   — never a torn frame or smear column.
+
+Result for a real subject: foreground STAYS, background MOVES, **no ghost twin**. The gate
+is what killed the old failure mode — a tall minaret on a busy skyline used to pass as a
+"subject", get inpainted, and tear into a smeared vertical seam.
 
 - **`motion_hint`** sets the drift: `right` (default) · `left` · `up` · `down`.
 - Drift distance = `depth` (default `0.25` → bg scaled 25% larger; tune in `ffmpeg.parallax_drift`).
 
 ```jsonc
-{ "id": 3, "animator": "parallax", "motion_hint": "right",
+{ "id": 3, "animator": "parallax", "motion_hint": "right", "image_role": "hero",
   "visual_prompt": "<style>, a cat in the sky with drifting clouds, one clear subject, 9:16" }
 ```
-Best with a **clear subject over a smooth/separable background** (sky, gradient, soft
-scenery) — that's where the inpaint is seamless.
+Best with a **clear single subject** (person, animal, statue). Pure scenery with no subject
+gets the sharp drift instead (or use `blurred-parallax` for soft depth).
 
 ## `blurred-parallax` — the soft-backdrop version (was the old `parallax`)
 
@@ -51,18 +60,31 @@ duplicate subject becomes a soft out-of-focus backdrop), panned behind the sharp
 Use it when the background is busy and the inpaint would smear, or when you *want* the
 dreamy anime depth-of-field look. It tolerates any still (the blur hides the ghost).
 
-## Layered parallax (the "two backgrounds" idea)
+## Layered parallax — AIM FOR 2–3 PLANES (the quality target)
 
-True multi-plane depth = a foreground + **several background planes drifting at different
-rates** (the far sky moves +1, nearer clouds move +2, same or opposite direction). The eye
-reads the rate difference as distance.
+True multi-plane depth = a foreground + **one or two background planes drifting at different
+rates** (the far sky moves +1, nearer hills/clouds move +2, same or opposite direction). The
+eye reads the rate difference as distance — it's the most premium *free* look in the kit, so
+when a beat deserves depth, **invest in layers instead of a flat single drift.**
 
-- `blurred-parallax` already does a **2-plane** version (sky vs ground, opposite directions).
-- For the **clean** `parallax`, full multi-plane needs the background separated into sub-layers
-  (sky / clouds / hills), which can't be done automatically from one flat still. **To get it
-  today:** supply those planes as separate transparent PNGs and compose them — a documented
-  **backlog** extension (`parallax_drift` already takes a `depth` knob per plane). Until then,
-  single-plane `parallax` (foreground static + one clean drifting background) covers most needs.
+**Quality bar:** every `parallax` scene should be **at least 2 clean planes**; reach for **3
+on the hero / establishing shot.** All planes must be REAL images (plates), never one torn
+still.
+
+- **2 planes (standard, balanced+ default):** static foreground subject + a clean,
+  separately-rendered background → `studio visuals --parallax-plates --parallax-fg`. Two real
+  images, **no inpaint, no tear**. This is the floor for a quality parallax scene.
+- **3 planes (premium reach):** add a **midground** so far/mid/near move at three rates (sky
+  slow, hills medium, subject static). Author the extra plane as its own transparent PNG and
+  compose it — `ffmpeg.parallax_drift` already takes a per-plane `depth` knob. (Auto-splitting
+  one flat still into sky/hills/foreground sub-layers is a **backlog** extension; until it
+  lands, hand-author the third plane on the shots that earn it.)
+- **Free 2-plane shortcut for scenery:** `blurred-parallax` already drifts a TOP (sky/far) and
+  BOTTOM (ground/near) plane in opposite directions — use it when you want soft layered depth
+  fast and don't need a sharp keyed subject.
+
+Don't ship a flat single-image drift where a layered parallax was achievable — that's the
+difference between "a still that pans" and "a scene with depth".
 
 ## Robustness & tuning
 

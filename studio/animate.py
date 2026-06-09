@@ -129,21 +129,51 @@ def _inpaint_subject(image: Path, mask, iters: int = 18, radius: int = 28):
     return img
 
 
+def _clean_subject(alpha) -> bool:
+    """Is this rembg alpha a SINGLE compact foreground subject worth holding static while
+    the background drifts? Rejects the masks that produce torn frames when inpainted:
+      • thin verticals (minarets/poles) — a tall sliver the blur-diffusion can't fill;
+      • edge-hugging masks touching 3+ frame borders — that's background, not a subject;
+      • scattered/fragmented masks (low fill inside their bbox).
+    Scenery skylines trip every one of these, so they fall through to layered drift."""
+    import numpy as np
+
+    a = np.asarray(alpha, dtype=np.uint8) > 32
+    cov = float(a.mean())
+    if not (0.06 <= cov <= 0.55):
+        return False
+    ys, xs = np.where(a)
+    if xs.size == 0:
+        return False
+    hh, ww = a.shape
+    x0, x1, y0, y1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
+    bw, bh = (x1 - x0 + 1) / ww, (y1 - y0 + 1) / hh
+    if bw < 0.22 and bh > 0.55:                            # thin vertical sliver (minaret)
+        return False
+    edges = (x0 <= 2) + (x1 >= ww - 3) + (y0 <= 2) + (y1 >= hh - 3)
+    if edges >= 3:                                         # hugs the frame = background
+        return False
+    if cov / max(bw * bh, 1e-6) < 0.30:                    # fragmented inside its bbox
+        return False
+    return True
+
+
 def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
-    """TRUE 2.5D parallax: the subject is cut out (`rembg`) and held STATIC + sharp in front
-    while a background plane DRIFTS behind it (foreground stays put, background moves).
+    """TRUE 2.5D parallax: a STATIC + sharp foreground subject held in front while a
+    background plane DRIFTS behind it. Layers come from the best source available:
 
-    The drifting plane comes from one of two sources:
-    1. **Pre-generated plate** — a separate `scene_NN_bg.png` (the scene re-generated with the
-       subject removed). Best quality; made on balanced+ tiers via `studio visuals
-       --parallax-plates`.
-    2. **Auto-inpaint (no plate)** — the same still with the subject erased on the fly
-       (`_inpaint_subject`, blur-diffusion). The inpaint FILLS the subject hole, so the
-       drifting plane has no moving hole or ghost twin. Great on smooth backgrounds (sky).
+    1. **Two purpose-built plates** (gold) — a transparent `scene_NN_fg.png` subject over a
+       separate clean `scene_NN_bg.png` (subject re-rendered out). Two REAL images, zero
+       inpaint, zero tear. Made on balanced+ via `studio visuals --parallax-plates
+       --parallax-fg`.
+    2. **Clean cut + auto-inpaint** (no plates) — only when rembg finds a single compact
+       subject (`_clean_subject`): cut it out, erase its hole from the background by
+       blur-diffusion (`_inpaint_subject`), drift the filled plane behind it.
 
-    Both are gated by subject coverage (~6–55%): if there's no clean separable subject it
-    falls back to a safe full-image PAN (never shears/holes). `motion_hint`:
-    'left'/'right'/'up'/'down' sets the drift (default right).
+    Scenery (no separable subject — skylines, landscapes) and any still that fails the
+    clean-subject gate route to a SHARP full-frame drift — full resolution kept crisp, no
+    inpaint hole, no tear (for the soft 2.5D depth look ask for the `blurred-parallax`
+    animator explicitly). `motion_hint` 'left'/'right'/'up'/'down' sets the drift.
     See docs/30-animation/parallax.md and the parallax rule in film-maker-guides.md."""
     w, h = canvas.W, canvas.H
     hint = (scene.motion_hint or "").lower()
@@ -151,53 +181,50 @@ def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
                  else "down" if "down" in hint else "right")
     pan = {"left": "driftleft", "right": "driftright", "up": "driftup", "down": "driftdown"}[direction]
 
-    # TRUE parallax: a STATIC sharp subject in front, a background plane DRIFTING behind it.
-    # Each layer comes from the best source available, in order:
-    #   foreground = a pre-generated `_fg.png` plate (Route 1: subject keyed on a flat bg) →
-    #                else the subject cut from the main still with rembg.
-    #   background = a pre-generated `_bg.png` plate (subject re-rendered out) →
-    #                else the main still with the subject INPAINTED OUT on the fly (no hole).
-    # Gated by subject coverage so a subjectless still safely falls through to a plain pan.
-    fg_plate = image.with_name(image.stem + "_fg.png")     # optional pre-generated fg plate
-    bg_plate = image.with_name(image.stem + "_bg.png")     # optional pre-generated bg plate
+    fg_plate = image.with_name(image.stem + "_fg.png")     # optional transparent fg plate
+    bg_plate = image.with_name(image.stem + "_bg.png")     # optional clean bg plate
+
+    # --- Route 1: two real plates → composite directly, no inpaint, no tear. ---
+    if fg_plate.exists() and bg_plate.exists():
+        try:
+            ffmpeg.parallax_drift(bg_plate, fg_plate, dst, seconds, direction=direction)
+            return "parallax (fg-plate+bg-plate)"
+        except Exception:
+            pass  # plate composite failed → fall through to the gated cut below
+
+    # Scenery has no subject to hold static → a sharp full-frame drift keeps every
+    # detail crisp (no inpaint hole, no tear). Never subject-inpaint a skyline.
+    if (scene.image_role or "").lower() == "bg":
+        ffmpeg.motion(image, dst, seconds, preset=pan)
+        return f"parallax->drift ({direction}, scenery)"
+
+    # --- Route 2: cut the subject from the still, but ONLY if it's a clean one. ---
     tmp: list = []
     try:
         import numpy as np
         from PIL import Image, ImageOps
+        from rembg import remove
 
-        # --- foreground (held static) ---
-        if fg_plate.exists():
-            cut = ImageOps.fit(Image.open(fg_plate).convert("RGBA"), (w, h))
-            src_tag = "fg-plate"
-        else:
-            from rembg import remove
-            cut = remove(ImageOps.fit(Image.open(image).convert("RGBA"), (w, h)))
-            src_tag = ""
+        cut = remove(ImageOps.fit(Image.open(image).convert("RGBA"), (w, h)))
         alpha = cut.split()[-1]
+        if not _clean_subject(alpha):                      # thin/edge/scattered → not a subject
+            raise ValueError("no clean separable subject")
         cov = float((np.asarray(alpha, dtype=np.uint8) > 32).mean())
-        if not (0.06 <= cov <= 0.55):                      # no clean separable subject
-            raise ValueError("no plausible subject")
         fg = dst.with_name(dst.stem + "_fg.png")
         cut.save(fg)
         tmp.append(fg)
 
-        # --- background (drifts) ---
         if bg_plate.exists():
             bg = bg_plate
-            src_tag = f"{src_tag}+bg-plate" if src_tag else "bg-plate"
+            src_tag = "bg-plate"
         else:
-            from rembg import remove
-            # inpaint needs the MAIN still's own subject mask (the fg plate's centred subject
-            # won't line up with where the subject sits in the scene).
-            mask = (alpha if not fg_plate.exists()
-                    else remove(ImageOps.fit(Image.open(image).convert("RGBA"), (w, h))).split()[-1])
             fitted = dst.with_name(dst.stem + "_fit.png")
             ImageOps.fit(Image.open(image).convert("RGB"), (w, h)).save(fitted)
             tmp.append(fitted)
             bg = dst.with_name(dst.stem + "_bg.png")
-            _inpaint_subject(fitted, mask).save(bg)
+            _inpaint_subject(fitted, alpha).save(bg)
             tmp.append(bg)
-            src_tag = f"{src_tag}+auto-inpaint" if src_tag else "auto-inpaint"
+            src_tag = "auto-inpaint"
 
         ffmpeg.parallax_drift(bg, fg, dst, seconds, direction=direction)
         for t in tmp:
@@ -206,11 +233,10 @@ def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
     except Exception:
         for t in tmp:
             t.unlink(missing_ok=True)
-        pass  # any failure → safe pan below
 
-    # Fallback: clean full-image lateral pan — bulletproof, never holes/tears.
+    # Last resort: a clean sharp drift — bulletproof, never holes/tears.
     ffmpeg.motion(image, dst, seconds, preset=pan)
-    return f"parallax->pan ({direction})"
+    return f"parallax->drift ({direction})"
 
 
 def _blurred_parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
