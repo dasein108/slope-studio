@@ -353,6 +353,16 @@ def publish(run_id: str, target: str = "youtube", privacy: str = "public",
     console.print(f"[green]published[/] {r.note}")
 
 
+@app.command("unlist")
+def unlist(video_id: str, channel: str = "", privacy: str = "unlisted") -> None:
+    """Flip an existing YouTube video's privacy (default: unlisted) — retire an old version
+    when a re-make replaces it. Needs the youtube.force-ssl scope; if the token predates it,
+    the first run re-opens the browser consent. --channel uses token_<NAME>.json."""
+    from studio.providers import publish as pub
+    status = pub.set_privacy(video_id, privacy, channel)
+    console.print(f"[green]{video_id}[/] → {status}")
+
+
 @app.command("yt-channel")
 def yt_channel(channel: str = "") -> None:
     """Authorize (browser, first time) and print WHICH YouTube channel a token is
