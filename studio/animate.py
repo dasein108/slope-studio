@@ -170,10 +170,11 @@ def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
        subject (`_clean_subject`): cut it out, erase its hole from the background by
        blur-diffusion (`_inpaint_subject`), drift the filled plane behind it.
 
-    Scenery (no separable subject — skylines, landscapes) and any still that fails the
-    clean-subject gate route to a SHARP full-frame drift — full resolution kept crisp, no
-    inpaint hole, no tear (for the soft 2.5D depth look ask for the `blurred-parallax`
-    animator explicitly). `motion_hint` 'left'/'right'/'up'/'down' sets the drift.
+    Scenery (no separable subject — skylines, landscapes, cosmos) routes to a SHARP 2-plane
+    DEPTH split (`ffmpeg.parallax_scenery`): the still is cut into two feathered depth bands
+    that pan in opposite directions at different speeds → real visible 2.5D depth, kept crisp
+    (NOT a flat full-frame pan, which reads as plain drift). A still that fails the clean-subject
+    gate falls to a sharp full-frame drift as a last resort. `motion_hint` sets direction.
     See docs/30-animation/parallax.md and the parallax rule in film-maker-guides.md."""
     w, h = canvas.W, canvas.H
     hint = (scene.motion_hint or "").lower()
@@ -192,11 +193,20 @@ def _parallax(scene: Scene, image: Path, dst: Path, seconds: float) -> str:
         except Exception:
             pass  # plate composite failed → fall through to the gated cut below
 
-    # Scenery has no subject to hold static → a sharp full-frame drift keeps every
-    # detail crisp (no inpaint hole, no tear). Never subject-inpaint a skyline.
+    # Scenery has no subject to hold static → split it into two feathered DEPTH BANDS and
+    # pan them at different speeds (sharp) for REAL visible 2.5D depth — not a flat full-frame
+    # pan (which reads as plain drift). Never subject-inpaint a skyline.
     if (scene.image_role or "").lower() == "bg":
-        ffmpeg.motion(image, dst, seconds, preset=pan)
-        return f"parallax->drift ({direction}, scenery)"
+        from studio.providers import cardgen
+        top = dst.with_name(dst.stem + "_ptop.png")
+        bot = dst.with_name(dst.stem + "_pbot.png")
+        try:
+            cardgen.depth_bands(image, top, bot)
+            ffmpeg.parallax_scenery(top, bot, dst, seconds)
+            return "parallax (sharp 2-plane depth, scenery)"
+        except Exception:
+            ffmpeg.motion(image, dst, seconds, preset=pan)   # last-resort flat drift
+            return f"parallax->drift ({direction}, scenery)"
 
     # --- Route 2: cut the subject from the still, but ONLY if it's a clean one. ---
     tmp: list = []

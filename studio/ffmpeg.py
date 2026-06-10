@@ -371,6 +371,33 @@ def parallax_layers(top_png: Path, bottom_png: Path, fg_png: Path, dst: Path, se
           "-preset", "veryfast", "-crf", "20", "-an", str(dst)])
 
 
+def parallax_scenery(top_png: Path, bottom_png: Path, dst: Path, seconds: float,
+                     w: int = 0, h: int = 0, fps: int = 30, blur: float = 0.0) -> None:
+    """SHARP 2-plane parallax for subjectless SCENERY (no foreground cut-out). The two
+    feathered depth bands from cardgen.depth_bands pan in OPPOSITE directions at DIFFERENT
+    speeds (far slow, near faster+wider) → visibly real 2.5D depth, kept crisp (blur=0).
+    This is what a scenery/landscape `parallax` beat renders as — NOT a flat full-frame pan.
+    """
+    w, h = w or canvas.W, h or canvas.H
+    far_w, near_w = int(w * 1.18), int(w * 1.42)   # near plane much wider → moves more
+    period = max(2.0, 2.4 * seconds)
+    farx = f"(iw-{w})/2-(iw-{w})/2*sin(t*2*PI/{period:.3f})"     # far plane: drifts one way
+    nearx = f"(iw-{w})/2+(iw-{w})/2*sin(t*2*PI/{period:.3f})"    # near plane: opposite, wider
+    gb_far = f",gblur=sigma={blur}" if blur else ""
+    gb_near = f",gblur=sigma={blur}" if blur else ""
+    base = f"color=c=#05050a:s={w}x{h}:r={fps}:d={seconds:.3f}[base]"
+    far = (f"[0:v]scale={far_w}:{h}:force_original_aspect_ratio=increase,setsar=1,"
+           f"crop={w}:{h}:x='{farx}':y='(ih-{h})/2'{gb_far}[far]")
+    near = (f"[1:v]scale={near_w}:{h}:force_original_aspect_ratio=increase,setsar=1,"
+            f"crop={w}:{h}:x='{nearx}':y='(ih-{h})/2'{gb_near}[near]")
+    o1 = "[base][far]overlay=0:0:format=auto[t1]"
+    o2 = "[t1][near]overlay=0:0:format=auto[v]"
+    _run(["ffmpeg", "-y", "-loop", "1", "-i", str(top_png), "-loop", "1", "-i", str(bottom_png),
+          "-filter_complex", ";".join([base, far, near, o1, o2]),
+          "-map", "[v]", "-t", f"{seconds}", "-pix_fmt", "yuv420p", "-c:v", "libx264",
+          "-preset", "veryfast", "-crf", "20", "-an", str(dst)])
+
+
 # atmosphere overlay: per-kind scroll speed (px/s), rise vs fall, sideways sway (px).
 _ATMO = {
     "rain":   (660, False, 14),

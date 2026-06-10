@@ -31,10 +31,12 @@ uv pip install -e ".[parallax]"     # rembg + onnxruntime (first run caches u2ne
    REAL images directly via `ffmpeg.parallax_drift` — **zero inpaint, zero tear**. This is
    the balanced+ default: `studio run` (and `studio visuals --parallax-plates
    --parallax-fg`) generate both plates for every `parallax` scene.
-2. **Scenery → sharp drift.** A scene with `image_role:"bg"` (skyline, landscape — *no*
-   separable subject) is **never** subject-inpainted. It falls to a **sharp full-frame
-   drift** (`ffmpeg.motion`) that keeps every detail crisp. For the soft 2.5D depth look on
-   scenery, ask for `blurred-parallax` explicitly.
+2. **Scenery → SHARP 2-plane depth.** A scene with `image_role:"bg"` (skyline, landscape,
+   cosmos — *no* separable subject) is **never** subject-inpainted. It's split into two
+   feathered depth bands (`cardgen.depth_bands`) that pan in **opposite directions at
+   different speeds** (`ffmpeg.parallax_scenery`) → real visible 2.5D depth, kept crisp.
+   This is NOT a flat full-frame pan (that read as plain drift — the old behavior). For the
+   *soft/blurred* depth look, ask for `blurred-parallax` explicitly.
 3. **Clean cut + auto-inpaint (no plates).** Only when `rembg` finds a **single compact
    subject** (gate `_clean_subject`: rejects thin verticals like minarets, edge-hugging
    masks touching 3+ borders, and fragmented masks). It cuts the subject, erases its hole
