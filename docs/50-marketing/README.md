@@ -25,8 +25,8 @@ ideate → deploy → measure → learn → ideate …
 |------|-----|--------------|
 | 1 ideate | `studio marketing ideate` | LLM generates idea + hook + **assumption** + goal → `planned` journal entry. Biased by learned strategy + web-search trend signals (`--signals`). |
 | 2 deploy | `film-maker` → `studio run … --publish-to youtube` then `studio marketing link <entry> <run>` | Produce + publish; bind the run + YouTube id to the bet. |
-| 3 measure | `studio marketing measure` | Fetch stats + comments; score virality; rank **percentile within the channel**; tag win/loss/neutral. |
-| 4 learn | `studio marketing learn` | LLM confirms/refutes each assumption vs results → updates `winning_patterns`, `losing_patterns`, `current_direction`, `next_seeds`. |
+| 3 measure | `studio marketing measure` + `snapshots` | Fetch stats + comments; score virality; capture 1d/3d/7d/14d/30d age buckets; rank **percentile within the channel**; tag win/loss/neutral. |
+| 4 analyze + learn | `insights` / `slice` / `compare` → `learn` | Surface hidden relations across theme/effects/animation/music/sfx/cost, then confirm/refute assumptions → update `winning_patterns`, `losing_patterns`, `current_direction`, `next_seeds`. |
 
 `studio marketing journal` shows state; `studio marketing report` writes the full brief.
 
@@ -46,6 +46,12 @@ keep scripted LLM fallbacks for quick non-agent passes.
 | `strategy` | persist an agent's reflection (direction/patterns/seeds/per-bet note) |
 | `budget` | set per-video / per-minute spend cap; `--for-duration` → a video's `--max-cost` (T4) |
 | `bandit` | show the learned theme/tag win-rates + backlog ranking (T8) |
+| `due-snapshots` | list videos ready for 1d/3d/7d/14d/30d measurement buckets |
+| `snapshots` | fetch and persist age-bucket performance snapshots |
+| `slice` | group performance by theme/effects/animators/music/sfx/model/cost features |
+| `compare` | compare videos with one feature against videos without it |
+| `insights` | emit the compact JSON strategy pack for `marketing-guru` |
+| `export` | dump video-level analytics rows as CSV/JSON |
 | `tick` | the autonomous engine's NEXT due action (read-only; T1) |
 | `autopilot` | perform one due action (measure\|learn\|ideate\|produce\|idle); `--produce` gates spend |
 
@@ -68,6 +74,36 @@ exploratory (no relative signal yet). After 10 it switches to **optimizing** —
 bandit (T8) exploits winning theme/tag arms while wide posteriors keep exploring. See
 [`../../.claude/skills/marketing-guru/references/loop.md`](../../.claude/skills/marketing-guru/references/loop.md).
 
+## Age-bucket analytics
+
+Do not compare a 1-day upload against a 30-day upload as if they had the same opportunity to
+accumulate views. The measurement layer keeps fixed post-publish snapshots:
+
+```bash
+studio marketing due-snapshots --channel X
+studio marketing snapshots     --channel X --buckets 1,3,7,14,30
+studio marketing insights      --channel X --json
+```
+
+Use `slice` to find broad associations:
+
+```bash
+studio marketing slice --channel X --bucket 7d \
+  --group-by theme,effects,animators,music_provider,sfx_provider --metric virality
+```
+
+Use `compare` for specific hypotheses:
+
+```bash
+studio marketing compare --channel X effects=glitch --bucket 14d --metric virality
+studio marketing compare --channel X animators=parallax --bucket 7d --metric retention
+studio marketing compare --channel X music_provider=synth --bucket 3d --metric virality_per_dollar
+```
+
+Read every result as **association, not causation**. The output includes sample counts and
+examples because theme, publish timing, spend, script quality, and production choices are
+confounded. Low `n` generates a testable next bet; it is not a rule.
+
 ## Where things live (code map)
 
 ```
@@ -80,13 +116,15 @@ studio/
     learn.py      LLM: reflect on measured bets → update Strategy (fallback: heuristic)
     memory.py     episodic recall — rank measured bets by relevance to a query (lexical, offline)
     telemetry.py  T3: pull cost/duration/animators/fx/model from a run manifest into the Entry
+    analytics_tools.py  age buckets, slices, comparisons, insights, CSV/JSON export
     loop.py       T1 engine: plan() → the one DUE action; deferred-measurement state machine
     bandit.py     T8: warm-started Thompson sampling over theme+tags → next bet to produce
   providers/
     analytics.py  YouTube Data API (stats, comments, recent uploads) + Analytics API
                   (retention, subs, best-effort) — reuses the publish OAuth token
-  cli.py          `studio marketing` sub-app: ideate · link · measure · learn · journal · report
-                  · add · backlog · recall · strategy · budget · bandit · tick · autopilot
+  cli.py          `studio marketing` sub-app: ideate · link · measure · snapshots · slice
+                  · compare · insights · export · learn · journal · report · add · backlog
+                  · recall · strategy · budget · bandit · tick · autopilot
 ```
 
 Journal lives at `runs/_marketing/<channel>/journal.json` (+ `journal.md`, `report.md`) —

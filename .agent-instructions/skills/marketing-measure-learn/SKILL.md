@@ -34,6 +34,32 @@ Watch for:
   [`../marketing-guru/references/scoring.md`](../marketing-guru/references/scoring.md) and
   [`docs/20-research/self-improving-loop.md`](../../../docs/20-research/self-improving-loop.md).
 
+## Step 1.5 — SNAPSHOT + SLICE (deterministic analysis)
+
+Before changing strategy, collect age-bucket snapshots and ask the CLI for the hidden-relation
+pack. This is what lets the agent compare effects/cost/theme/music/sfx/animation at consistent
+ages instead of mixing a 1-day video with a 30-day video.
+
+```bash
+studio marketing due-snapshots --channel <name>
+studio marketing snapshots     --channel <name> --buckets 1,3,7,14,30
+studio marketing insights      --channel <name> --json
+```
+
+Use focused slices/comparisons when a pattern looks interesting:
+
+```bash
+studio marketing slice --channel <name> --bucket 7d \
+  --group-by theme,effects,animators,music_provider,sfx_provider --metric virality
+
+studio marketing compare --channel <name> effects=glitch --bucket 14d --metric virality
+studio marketing compare --channel <name> animators=parallax --bucket 7d --metric retention
+studio marketing compare --channel <name> music_provider=synth --bucket 3d --metric virality_per_dollar
+```
+
+Interpret these as **associations, not causation**. Always check `n`, best/worst examples, and
+confounders such as topic quality, publish timing, spend, and whether the video is still too young.
+
 ## Step 2 — LEARN (agent-driven reflection)
 
 This is where the loop self-improves. YOU reflect (assumption testing is judgement, not a
@@ -43,12 +69,14 @@ formula); the CLI just persists what you conclude.
    ```bash
    studio marketing journal --channel <name>
    studio marketing recall "<theme or direction under review>" --channel <name>
+   studio marketing insights --channel <name> --json
    ```
 2. **Reflect** — for each measured bet compare its **pre-stated `assumption`** against the
-   measured `virality`/`percentile`/`outcome` + top audience comments. Was it **held or
-   refuted**? Then across the portfolio extract:
+   measured `virality`/`percentile`/`outcome`, age-bucket snapshots, slice results, and top
+   audience comments. Was it **held or refuted**? Then across the portfolio extract:
    - `winning_patterns` — traits of the ≥P75 bets,
    - `losing_patterns` — traits of the ≤P25 bets,
+   - production correlations — effects/animation/music/sfx/cost formats that look promising or weak,
    - `current_direction` — a one-paragraph thesis for what to make next,
    - `next_seeds` — 3–5 concrete idea seeds.
    Be honest when an assumption was **refuted** — that's the signal that improves the next bet.

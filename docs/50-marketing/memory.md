@@ -25,7 +25,7 @@ Per channel, under `runs/_marketing/<channel>/` (omit `--channel` → `_default`
 
 ```
 runs/_marketing/<channel>/
-├── journal.json     # MACHINE TRUTH — pydantic Journal: strategy + entries[]
+├── journal.json     # MACHINE TRUTH — pydantic Journal: strategy + entries[] + snapshots[]
 ├── journal.md       # human render, regenerated on every save (never hand-edit)
 └── report.md        # full growth brief (studio marketing report; via marketing-guru)
 
@@ -52,10 +52,13 @@ edit the JSON (or use helper commands), and it re-renders on save.
 - **`Entry`** (episodic) — `id` (`jNNNN`), the bet (`idea`, `hook`, `assumption`, `goal`,
   `theme`, `tags[]`, `explore`), deployment (`status`, `run_id`, `video_id`, `video_url`,
   `published_at`), **production telemetry** (`cost_usd`, `duration_s`, `tier`, `video_model`,
-  `animators[]`, `effects[]`, `providers{}`, `n_scenes`), measurement (`metrics`, `virality`,
-  `percentile`, `outcome`, `comments_sample[]`, `learnings`).
+  `animators[]`, `effects[]`, `providers{}`, `n_scenes`, music/sfx/tone/transition fields,
+  counted animator/effect/atmosphere/transition usage), measurement (`metrics`, `snapshots[]`,
+  `virality`, `percentile`, `outcome`, `comments_sample[]`, `learnings`).
 - **`Metrics`** — views, likes, comments, retention, subs_gained, age_days, velocity,
   engagement, fetched_at.
+- **`MetricSnapshot`** — a `Metrics` record captured near a fixed post-publish age bucket
+  (`1d`, `3d`, `7d`, `14d`, `30d`) so the loop can compare videos at the same maturity.
 
 > **Production telemetry (T3, shipped):** `link` captures per-video cost, duration, and the
 > video technologies used (animators / fx / model / per-stage providers) from
@@ -73,6 +76,24 @@ relevance is lexical (free, offline, zero deps); the seam to swap in embeddings 
 index is `memory._relevance` (research open-question Q9).
 
 CLI: `studio marketing recall "<query>" --channel <name>`.
+
+## Age-bucket analytics
+
+The flat `metrics` field is the latest measurement; `snapshots[]` keeps the time series needed
+for strategy slices. Use:
+
+```bash
+studio marketing due-snapshots --channel X
+studio marketing snapshots     --channel X --buckets 1,3,7,14,30
+studio marketing insights      --channel X --json
+studio marketing slice         --channel X --bucket 7d --group-by theme,effects,animators --metric virality
+studio marketing compare       --channel X effects=glitch --bucket 14d --metric virality
+studio marketing export        --channel X --format csv
+```
+
+`1d` is mostly early hook/packaging velocity; `3d` is the first useful maturation point; `7d`,
+`14d`, and `30d` reveal durability. Slices are associations, not causal proof, and should always
+be read with sample size and examples.
 
 ## How memory flows the loop
 

@@ -101,12 +101,18 @@ Ask Claude: *"run the growth loop for the pols channel"* and it will, per cycle:
    ```bash
    studio marketing link j0001 <run-id> --channel pols
    ```
-3. **measure** (after 48–72h) — stats + comments → virality ranked against your own channel:
+3. **measure** (after 48–72h) — stats + comments → virality ranked against your own channel,
+   plus age-bucket snapshots so 1d / 3d / 7d / 14d / 30d videos compare fairly:
    ```bash
    studio marketing measure --channel pols
+   studio marketing snapshots --channel pols --buckets 1,3,7,14,30
    ```
-4. **learn** — confirm/refute each assumption, update strategy + next ideas:
+4. **analyze + learn** — find hidden relations across effects, cost, theme, music, sound, and
+   animation; then confirm/refute each assumption and update strategy + next ideas:
    ```bash
+   studio marketing insights --channel pols --json
+   studio marketing slice --channel pols --bucket 7d \
+     --group-by theme,effects,animators,music_provider,sfx_provider --metric virality
    studio marketing learn --channel pols --provider gpt-4o-mini
    studio marketing journal --channel pols     # see phase, winners, direction
    ```

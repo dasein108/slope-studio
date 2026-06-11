@@ -33,7 +33,7 @@ alone; this skill is the conductor, and it also owns the thin read/pick/report h
 | 1 | **marketing-ideate** | agent generates falsifiable bets → backlog | `add` (· `ideate` fallback) |
 | 2 | **guru: backlog** | pick the next bet (bandit, 60/40 fallback) | `backlog` · `bandit` |
 | 3 | **marketing-deploy** | produce+publish via film-maker, then link | `studio run` · `link` |
-| 4+5 | **marketing-measure-learn** | score virality, then reflect → strategy (wait 48-72h) | `measure` · `strategy` |
+| 4+5 | **marketing-measure-learn** | score virality, snapshot age buckets, slice hidden relations, then reflect → strategy (wait 48-72h) | `measure` · `snapshots` · `insights` · `slice` · `compare` · `strategy` |
 | — | **guru: report** | write the growth brief to disk | `report` |
 | ⟳ | **marketing-autopilot** | run the WHOLE loop on a schedule (deferred-measurement aware) | `tick` · `autopilot` |
 
@@ -107,6 +107,26 @@ Writes `runs/_marketing/<name>/report.md` — the channel's phase, current direc
 with their assumptions (held or refuted), and the next bets. Run it after **marketing-measure-learn**
 so it reflects the latest cycle. For a quick interactive read instead of a file, just run
 `studio marketing journal`.
+
+## analysis — find hidden relations
+
+For strategy changes that depend on production choices, do not infer from the flat journal table
+alone. Ask the CLI for age-normalized slices across theme, cost, music, sound, animation, effects,
+and providers:
+
+```bash
+studio marketing due-snapshots --channel <name>
+studio marketing snapshots     --channel <name> --buckets 1,3,7,14,30
+studio marketing insights      --channel <name> --json
+studio marketing slice         --channel <name> --bucket 7d --group-by theme,effects,animators --metric virality
+studio marketing compare       --channel <name> effects=glitch --bucket 14d --metric virality
+studio marketing export        --channel <name> --format csv
+```
+
+Use `1d` for early hook/packaging velocity, `3d` for first maturation, `7d` for retention and
+durability, `14d` for stronger winners/losers, and `30d` for long-tail formats. Treat every slice
+as association until repeated across enough examples; low `n` is a hypothesis generator, not a
+rule.
 
 ## Setup check
 ```bash

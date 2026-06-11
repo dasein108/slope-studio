@@ -908,6 +908,166 @@ def m_measure(channel: str = "", comments_n: int = 60, force: bool = False) -> N
     _marketing_table(j)
 
 
+@marketing_app.command("due-snapshots")
+def m_due_snapshots(channel: str = "", buckets: str = "1,3,7,14,30") -> None:
+    """Show which deployed/measured videos are due for age-bucket snapshots."""
+    from studio.marketing import analytics_tools as mat
+    from studio.marketing import journal as mj
+
+    due = mat.due_entries(mj.load(channel), mat.parse_buckets(buckets))
+    t = Table(title=f"due snapshots: {channel or 'default'}")
+    for col in ("id", "video", "age", "due buckets"):
+        t.add_column(col)
+    for row in due:
+        t.add_row(row["id"], row["video_id"], f"{row['age_days']:.1f}d", ", ".join(row["due"]))
+    console.print(t)
+    if not due:
+        console.print("[green]no snapshot buckets due[/]")
+
+
+@marketing_app.command("snapshots")
+def m_snapshots(channel: str = "", buckets: str = "1,3,7,14,30", force: bool = False) -> None:
+    """Fetch and persist post-publish age-bucket metric snapshots.
+
+    Buckets default to 1d,3d,7d,14d,30d. A bucket is written once when a video is old enough;
+    --force refreshes all eligible buckets. Latest metrics are also refreshed for compatibility.
+    """
+    from studio.marketing import analytics_tools as mat
+    from studio.marketing import journal as mj
+    from studio.marketing import score as mscore
+    from studio.providers import analytics
+
+    j = mj.load(channel)
+    bucket_days = mat.parse_buckets(buckets)
+    targets = [e for e in j.entries if e.video_id and e.status in ("deployed", "measured")]
+    stats = analytics.video_stats([e.video_id for e in targets], channel)
+    written: list[tuple[str, list[str]]] = []
+    for e in targets:
+        st = stats.get(e.video_id)
+        if not st:
+            continue
+        latest = mj.Metrics(views=st["views"], likes=st["likes"], comments=st["comments"],
+                            age_days=st["age_days"], fetched_at=mj._now())
+        latest.retention = analytics.retention(e.video_id, channel)
+        latest.subs_gained = analytics.subs_gained(e.video_id, channel)
+        mscore.derive(latest)
+        e.metrics = latest
+        e.published_at = e.published_at or st["published_at"]
+        e.virality = mscore.virality(latest)
+        e.status = "measured"
+        due = [mat.bucket_name(b) for b in bucket_days if latest.age_days >= b] if force else (
+            mat.buckets_to_write(e, latest.age_days, bucket_days)
+        )
+        for b in due:
+            snap = mj.MetricSnapshot(bucket=b, **latest.model_dump())
+            mat.upsert_snapshot(e, b, snap)
+        if due:
+            written.append((e.id, due))
+
+    measured = j.measured()
+    pcts = mscore.relativize([e.virality for e in measured])
+    for e, p in zip(measured, pcts):
+        e.percentile = p
+        e.outcome = mscore.outcome(p, j.in_cold_start)
+    mj.save(j)
+
+    t = Table(title=f"snapshots written: {channel or 'default'}")
+    for col in ("id", "buckets"):
+        t.add_column(col)
+    for eid, bs in written:
+        t.add_row(eid, ", ".join(bs))
+    console.print(t)
+    if not written:
+        console.print("[yellow]no eligible missing buckets[/]")
+
+
+@marketing_app.command("slice")
+def m_slice(channel: str = "", bucket: str = "latest", group_by: str = "theme",
+            metric: str = "virality", min_n: int = 1, json_out: bool = typer.Option(False, "--json")) -> None:
+    """Slice measured performance by theme/effects/animators/music/sfx/model/cost features."""
+    from studio.marketing import analytics_tools as mat
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    groups = [g.strip() for g in group_by.split(",") if g.strip()]
+    rows = [r for r in mat.slice_entries(j.entries, groups, metric, bucket) if r.n >= min_n]
+    if json_out:
+        console.print_json(mat.to_json([r.__dict__ for r in rows]))
+        return
+    t = Table(title=f"slice: {channel or 'default'} bucket={bucket} metric={metric}")
+    for col in ("group", "n", "median", "mean", "win", "cpv", "v/$", "best", "worst"):
+        t.add_column(col)
+    for r in rows:
+        warn = " *" if r.n < 5 else ""
+        t.add_row(r.group + warn, str(r.n), f"{r.median:.4f}", f"{r.mean:.4f}",
+                  f"{r.win_rate:.0%}", f"{r.cost_per_view:.5f}", f"{r.virality_per_dollar:.3f}",
+                  ",".join(r.best), ",".join(r.worst))
+    console.print(t)
+    console.print("[dim]* low sample size; read as association, not causation.[/]")
+
+
+@marketing_app.command("compare")
+def m_compare(channel: str = "", feature: str = typer.Argument(...),
+              bucket: str = "latest", metric: str = "virality",
+              json_out: bool = typer.Option(False, "--json")) -> None:
+    """Compare videos with a feature against videos without it, e.g. effects=glitch."""
+    from studio.marketing import analytics_tools as mat
+    from studio.marketing import journal as mj
+
+    res = mat.compare_entries(mj.load(channel).entries, feature, bucket, metric)
+    if json_out:
+        console.print_json(mat.to_json(res))
+        return
+    t = Table(title=f"compare: {feature} bucket={bucket} metric={metric}")
+    for col in ("cohort", "n", "median", "mean", "examples"):
+        t.add_column(col)
+    t.add_row("with", str(res["with"]["n"]), f"{res['with']['median']:.4f}",
+              f"{res['with']['mean']:.4f}", ",".join(res["with"]["examples"]))
+    t.add_row("without", str(res["without"]["n"]), f"{res['without']['median']:.4f}",
+              f"{res['without']['mean']:.4f}", ",".join(res["without"]["examples"]))
+    console.print(t)
+    console.print(f"[bold]median lift:[/] {res['median_lift']:.1%}  "
+                  f"[dim]confidence={res['confidence']} — association, not causation[/]")
+
+
+@marketing_app.command("insights")
+def m_insights(channel: str = "", json_out: bool = typer.Option(False, "--json")) -> None:
+    """Emit a compact strategy insight pack for marketing-guru."""
+    from studio.marketing import analytics_tools as mat
+    from studio.marketing import journal as mj
+
+    data = mat.insights(mj.load(channel))
+    if json_out:
+        console.print_json(mat.to_json(data))
+        return
+    console.print(f"[bold]insights[/] {data['channel']} — {data['phase']} "
+                  f"({data['deployed_count']} deployed)")
+    console.print(f"[bold]coverage:[/] {data['snapshot_coverage']}")
+    for w in data["warnings"]:
+        console.print(f"[yellow]warning:[/] {w}")
+    for bucket, groups in data["top"].items():
+        console.print(f"\n[bold]{bucket}[/]")
+        for group, rows in groups.items():
+            if not rows:
+                continue
+            best = rows[0]
+            console.print(f"  [cyan]{group}[/] {best['group']} n={best['n']} "
+                          f"median={best['median']:.4f} best={','.join(best['best'])}")
+
+
+@marketing_app.command("export")
+def m_export(channel: str = "", format: str = "csv", include_scenes: bool = False) -> None:
+    """Export video-level marketing data for deeper analysis."""
+    from studio.marketing import analytics_tools as mat
+    from studio.marketing import journal as mj
+
+    rows = mat.export_rows(mj.load(channel), include_scenes=include_scenes)
+    if format == "json":
+        console.print_json(mat.to_json(rows))
+    else:
+        console.print(mat.to_csv(rows))
+
+
 @marketing_app.command("learn")
 def m_learn(channel: str = "", provider: Optional[str] = None) -> None:
     """Step 3b — reflect on measured bets → update strategy + next idea seeds."""

@@ -35,6 +35,12 @@ class Metrics(BaseModel):
     fetched_at: str = ""
 
 
+class MetricSnapshot(Metrics):
+    """A performance snapshot captured near a fixed post-publish age bucket."""
+
+    bucket: str = ""                       # 1d | 3d | 7d | 14d | 30d
+
+
 class Entry(BaseModel):
     """A single bet: an idea + the assumption it tests, tracked to its outcome."""
 
@@ -63,8 +69,28 @@ class Entry(BaseModel):
     effects: list[str] = Field(default_factory=list)     # distinct fx + atmosphere used
     providers: dict[str, str] = Field(default_factory=dict)  # stage -> provider
     n_scenes: int = 0
+    cost_per_minute: float = 0.0
+    image_cost_usd: float = 0.0
+    video_cost_usd: float = 0.0
+    audio_cost_usd: float = 0.0
+    voice_provider: str = ""
+    voice_name: str = ""
+    tone: str = ""
+    music: str = ""                       # authored music prompt / mood
+    music_provider: str = ""
+    sfx_provider: str = ""
+    sfx_count: int = 0
+    sfx_keywords: list[str] = Field(default_factory=list)
+    transitions: list[str] = Field(default_factory=list)
+    animator_counts: dict[str, int] = Field(default_factory=dict)
+    effect_counts: dict[str, int] = Field(default_factory=dict)
+    atmosphere_counts: dict[str, int] = Field(default_factory=dict)
+    transition_counts: dict[str, int] = Field(default_factory=dict)
+    ai_scene_count: int = 0
+    kenburns_scene_count: int = 0
     # --- measurement (step 3) ---
     metrics: Metrics | None = None
+    snapshots: list[MetricSnapshot] = Field(default_factory=list)
     virality: float | None = None         # absolute composite score
     percentile: float | None = None       # 0-100 within this channel's portfolio
     outcome: str = ""                     # win | loss | neutral | cold-start
