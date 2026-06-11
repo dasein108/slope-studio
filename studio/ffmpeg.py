@@ -76,6 +76,69 @@ def silence(dst: Path, dur: float) -> None:
           "-t", f"{dur:.3f}", "-c:a", "libmp3lame", "-q:a", "4", str(dst)])
 
 
+def synth_drone(dst: Path, dur: float, root_hz: float = 55.0,
+                brightness: float = 0.5, minor: bool = True) -> None:
+    """Generate a FREE, GENTLE ambient drone bed (no library, no model) entirely in ffmpeg.
+
+    Tanpura-like, not a sub-bass wall: only CONSONANT partials (tonic + fifth + two octaves —
+    NO third, so no chord tension), the fundamental kept out of the sub-bass (root floored ~87 Hz
+    + a 60 Hz highpass) so it doesn't press the ears, a slow breathing tremolo for plucked-style
+    motion, a long resonant tail, and a gentle level. `brightness` 0..1 → lowpass cutoff;
+    `minor` only darkens the tone a touch. Ducked to ~-24 dB under narration at mix time.
+    """
+    dur = max(4.0, float(dur))
+    root = max(87.0, float(root_hz))                # below ~80 Hz a sustained drone = ear pressure
+    freqs = [root, root * 1.5, root * 2.0, root * 3.0]   # tonic · fifth · octave · octave+fifth
+    cutoff = int(700 + max(0.0, min(1.0, brightness)) * 2300)
+    if minor:
+        cutoff = int(cutoff * 0.85)                 # sombre moods slightly darker, still soft
+    sr = 44100
+    inputs: list[str] = []
+    for f in freqs:
+        inputs += ["-f", "lavfi", "-i", f"sine=frequency={f:.2f}:duration={dur:.2f}:sample_rate={sr}"]
+    fc = (f"amix=inputs={len(freqs)}:duration=longest,"
+          "highpass=f=60,"                          # strip the sub-bass that pressures the ears
+          f"lowpass=f={cutoff},"
+          "tremolo=f=0.22:d=0.35,"                  # slow breathing pulse (tanpura-like motion)
+          "aecho=0.85:0.85:140|320:0.5|0.3,"        # resonant, spacious tail
+          "volume=1.4,"                             # gentle (was a hot 3.0)
+          f"afade=t=in:st=0:d=3,afade=t=out:st={max(0.1, dur - 3):.2f}:d=3")
+    _run(["ffmpeg", "-y", *inputs, "-filter_complex", fc, "-t", f"{dur:.2f}",
+          "-c:a", "libmp3lame", "-q:a", "4", str(dst)])
+
+
+# generic, FREE, library-less sound effects synthesized in ffmpeg. Crude but usable as a
+# keyless starter for the `local` sfx provider (real recordings via Freesound CC0 are richer).
+_SFX_PRESETS = {
+    "whoosh":  (0.8, "anoisesrc=d=0.8:c=pink:a=0.7",
+                "-af", "highpass=f=400,lowpass=f=5000,afade=t=in:st=0:d=0.32,afade=t=out:st=0.4:d=0.4,volume=2.0"),
+    "rumble":  (4.0, "anoisesrc=d=4.0:c=brown:a=0.8",
+                "-af", "lowpass=f=110,tremolo=f=0.3:d=0.4,afade=t=in:st=0:d=1,afade=t=out:st=3:d=1,volume=2.0"),
+    "sparkle": (1.2, "anoisesrc=d=1.2:c=white:a=0.5",
+                "-af", "highpass=f=4000,tremolo=f=14:d=0.6,afade=t=in:st=0:d=0.1,afade=t=out:st=0.4:d=0.7,volume=2.5"),
+    "impact":  (0.9, None, "-filter_complex",
+                "sine=frequency=58:duration=0.9,afade=t=out:st=0:d=0.9,lowpass=f=200[a];"
+                "anoisesrc=d=0.1:c=white:a=0.5,highpass=f=800,afade=t=out:st=0:d=0.1[b];"
+                "[a][b]amix=inputs=2:duration=longest,volume=3.0"),
+    "hum":     (3.0, None, "-filter_complex",
+                "sine=frequency=80:duration=3.0[a];sine=frequency=120.5:duration=3.0[b];"
+                "[a][b]amix=inputs=2,lowpass=f=600,afade=t=in:st=0:d=0.8,afade=t=out:st=2.2:d=0.8,volume=2.0"),
+}
+
+
+def synth_sfx(dst: Path, kind: str) -> None:
+    """Synthesize a generic SFX cue (whoosh|rumble|sparkle|impact|hum) for free in ffmpeg."""
+    if kind not in _SFX_PRESETS:
+        raise ValueError(f"unknown synth sfx '{kind}'; choose {list(_SFX_PRESETS)}")
+    dur, lavfi_src, flag, graph = _SFX_PRESETS[kind]
+    if flag == "-filter_complex":            # graph defines its own lavfi sources
+        args = ["ffmpeg", "-y", "-filter_complex", graph]
+    else:                                    # single lavfi input + an -af chain
+        args = ["ffmpeg", "-y", "-f", "lavfi", "-i", lavfi_src, "-af", graph]
+    args += ["-t", f"{dur:.2f}", "-c:a", "libmp3lame", "-q:a", "5", str(dst)]
+    _run(args)
+
+
 def placeholder_image(dst: Path, label: str, color: str = "teal",
                       w: int = 0, h: int = 0) -> None:
     """Generate a solid-color keyframe (offline stub, no network/API).

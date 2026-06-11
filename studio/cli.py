@@ -456,8 +456,8 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
                 mp_eff = musicp
                 left = None if not max_cost else round(max_cost - m.total_cost_usd, 4)
                 if left is not None and audio_costs.expected_music_cost(musicp) > left + 1e-9:
-                    mp_eff = "local"  # paid music won't fit the budget → free fallback (silence if no packs)
-                    console.print(f"[dim]music → local (only ${left} left of budget)[/]")
+                    mp_eff = "synth"  # paid music won't fit the budget → FREE synth drone bed (real, not silence)
+                    console.print(f"[dim]music → synth (free; only ${left} left of budget)[/]")
                 audio(rid, sfxp, mp_eff, False)
             else:
                 console.print("[dim]skip audio (no voice)[/]")

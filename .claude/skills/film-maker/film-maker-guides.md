@@ -402,9 +402,16 @@ Audio is a real stage (`studio audio`, between `stitch` and `voice`; mixed/ducke
   `"ominous taiko and shakuhachi, slow, tense, cinematic, instrumental"`. Ducked under
   narration automatically.
 - **Providers:** `fal-elevenlabs-sfx` ($0.002/s — negligible) + `fal-stable-audio` ($0.20
-  flat music) when `FAL_KEY` is set; `freesound` (CC0, needs `FREESOUND_API_KEY`) or `local`
-  (packs in `assets/audio/music/`) for **free**; `silence` for $0 drafts. Run
-  `studio audio <id> --sfx-provider … --music-provider …`.
+  flat music) when `FAL_KEY` is set; for **FREE** beds + cues: **`synth` music** (an ffmpeg
+  drone generated from the mood, `--music-provider synth`, $0 — great for cosmic/mystical
+  tone), `local` sfx + music (`assets/audio/{sfx,music}/`, keyword-matched — stage the CC0
+  library once with `python scripts/fetch_sfx.py`), `freesound` (CC0, needs
+  `FREESOUND_API_KEY`); `silence` for $0 drafts. Run
+  `studio audio <id> --sfx-provider local --music-provider synth`.
+- **Sound design is its own role** — the **`sound-designer` skill** (`.claude/skills/sound-designer/`)
+  is the audio counterpart to this art-direction guide: hand it a produced run and it authors
+  + renders the whole sound layer (music mood + per-scene sfx), free-first. Reach for it whenever
+  a Short feels silent or flat, or to add sound to an existing run without re-rendering visuals.
 - **COST: music is the dominant audio cost ($0.20); sfx is ~free.** `--max-cost` is the
   whole-video budget — `studio run` reserves the music bed and **auto-downgrades paid music
   to free** if it won't fit. To cut the $0.20 without losing music, drop royalty-free tracks

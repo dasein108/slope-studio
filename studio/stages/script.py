@@ -27,11 +27,14 @@ IMAGE ROLE (controls cost — a cheap model is used for non-character scenes):
 AUDIO DESIGN (commercial-safe; the pipeline generates these):
 - "music": ONE short instrumental-mood phrase for the whole video (genre + energy +
   instruments), e.g. "tense cinematic battle drums, instrumental". Use "" for none.
-- Per-scene "sfx": 0-2 short one-shot effects that match the on-screen action ONLY when
-  there is a clear diegetic moment (a sword clash, a whoosh, a door slam, a breath).
+- Per-scene "sfx": 0-2 short one-shot effects, ONLY for a sound whose SOURCE is actually on
+  screen / in the action this very scene (a sword clash, a whoosh, a door slam, a breath).
   Each: {"prompt": vivid sound description, "at": seconds INTO the scene to trigger,
   "dur": 0.5-3 length, "gain_db": loudness vs voice (-6 quiet .. 0 prominent)}.
-  Most scenes need NO sfx — leave the list empty rather than inventing noise.
+  HARD RULE: most scenes need NO sfx — leave the list empty. Never add a cue that points to
+  nothing in the scene, never sprinkle sfx as generic "energy", and never stack noise. A
+  wrong or pointless sound is WORSE than silence; restraint reads as produced, clutter reads
+  as amateur. Same for "music": pick one mood that genuinely fits the piece, or "" for none.
 
 ART DIRECTION (free motion + looks — pick per scene from these menus; a heuristic pass
 fills anything you omit, so only set what clearly fits, and VARY it across scenes):

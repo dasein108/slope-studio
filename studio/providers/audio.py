@@ -111,6 +111,9 @@ def generate_music(provider: str, prompt: str, seconds: float, dst: Path) -> Gen
         cost, note = 0.0, _freesound(prompt, dst, want_music=True)
     elif provider == "local":
         cost, note = 0.0, _local_pick("music", prompt, dst, seconds)
+    elif provider == "synth":
+        _synth_music(prompt, seconds, dst)
+        cost, note = 0.0, "synth:drone (free)"
     elif provider == "silence":
         ffmpeg.silence(dst, seconds)
         cost, note = 0.0, "silent stub"
@@ -118,6 +121,26 @@ def generate_music(provider: str, prompt: str, seconds: float, dst: Path) -> Gen
         raise ValueError(f"unknown music provider {provider}")
     return GenResult(path=dst, cost_usd=cost, latency_s=round(time.time() - t0, 2),
                      provider=provider, note=note)
+
+
+def _synth_music(prompt: str, seconds: float, dst: Path) -> None:
+    """Map a mood prompt → a free ffmpeg drone bed (ffmpeg.synth_drone). Keyword heuristic;
+    deep/minor for cosmic-dread, soft-mid for mournful, brighter/major for light/folk."""
+    p = (prompt or "").lower()
+    major = any(w in p for w in ("major", "bright", "happy", "playful", "wry", "hopeful", "warm"))
+    # roots stay OUT of the sub-bass (>= the synth_drone ~87 Hz floor) so the bed is felt as
+    # tone, not pressure. Deep moods sit low-but-audible (G2/A2), not as a 49 Hz rumble.
+    if any(w in p for w in ("cosmic", "space", "void", "dread", "dark", "black hole", "horror", "ominous")):
+        root, bright = 98.0, 0.3
+    elif any(w in p for w in ("mournful", "sad", "melancholy", "tragic", "elegiac", "lament", "grief")):
+        root, bright = 110.0, 0.4
+    elif any(w in p for w in ("tense", "suspense", "mystery", "eerie", "unease")):
+        root, bright = 98.0, 0.35
+    elif any(w in p for w in ("lyre", "ancient", "folk", "gentle", "calm", "pastoral", "tanpura")):
+        root, bright = 165.0, 0.6
+    else:
+        root, bright = 131.0, 0.45
+    ffmpeg.synth_drone(dst, seconds, root_hz=root, brightness=bright, minor=not major)
 
 
 def _fal_music(prompt: str, seconds: float, dst: Path) -> None:
