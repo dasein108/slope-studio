@@ -7,7 +7,7 @@ description: >
   single stage of the `studio` CLI.
 ---
 
-# Claude Code Adapter: film-maker
+# Codex Adapter: film-maker
 
 Read the canonical skill before doing this work:
 

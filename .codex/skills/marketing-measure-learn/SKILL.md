@@ -5,7 +5,7 @@ description: >
   score virality, test assumptions, and update the learned channel strategy.
 ---
 
-# Claude Code Adapter: marketing-measure-learn
+# Codex Adapter: marketing-measure-learn
 
 Read the canonical skill before doing this work:
 

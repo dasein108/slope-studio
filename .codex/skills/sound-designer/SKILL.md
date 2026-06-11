@@ -5,7 +5,7 @@ description: >
   especially when a video feels silent, flat, or needs atmosphere.
 ---
 
-# Claude Code Adapter: sound-designer
+# Codex Adapter: sound-designer
 
 Read the canonical skill before doing this work:
 

@@ -5,7 +5,7 @@ description: >
   to the marketing journal so it can be measured later.
 ---
 
-# Claude Code Adapter: marketing-deploy
+# Codex Adapter: marketing-deploy
 
 Read the canonical skill before doing this work:
 

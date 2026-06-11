@@ -5,7 +5,7 @@ description: >
   picture, transparent logo/watermark, keywords, and channel description.
 ---
 
-# Claude Code Adapter: youtube-branding
+# Codex Adapter: youtube-branding
 
 Read the canonical skill before doing this work:
 

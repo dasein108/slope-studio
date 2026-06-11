@@ -397,26 +397,38 @@ Audio is a real stage (`studio audio`, between `stitch` and `voice`; mixed/ducke
 - **Per-scene `sfx`** (scenario `scenes[].sfx`, 0–2 each): `{prompt, at, dur, gain_db}`.
   Add only for clear diegetic moments — `"metallic sword clash"`, `"single thunderclap"`,
   `"howling wind"`, `"sharp gasp"`, `"crows cawing"`, `"heavy rain on wood"`. `at` =
-  seconds into the scene; `gain_db` ≈ −6 (subtle) … 0 (prominent).
-- **Top-level `music`** = one instrumental MOOD phrase for the whole piece, e.g.
-  `"ominous taiko and shakuhachi, slow, tense, cinematic, instrumental"`. Ducked under
-  narration automatically.
-- **Providers:** `fal-elevenlabs-sfx` ($0.002/s — negligible) + `fal-stable-audio` ($0.20
-  flat music) when `FAL_KEY` is set; for **FREE** beds + cues: **`synth` music** (an ffmpeg
-  drone generated from the mood, `--music-provider synth`, $0 — great for cosmic/mystical
-  tone), `local` sfx + music (`assets/audio/{sfx,music}/`, keyword-matched — stage the CC0
-  library once with `python scripts/fetch_sfx.py`), `freesound` (CC0, needs
-  `FREESOUND_API_KEY`); `silence` for $0 drafts. Run
-  `studio audio <id> --sfx-provider local --music-provider synth`.
-- **Sound design is its own role** — the **`sound-designer` skill** (`.claude/skills/sound-designer/`)
+  seconds into the scene; `gain_db` ≈ −15 (under voice) … −6 (prominent). Non-diegetic accent
+  cues should be 0.2-2.0s and never exceed 5.0s. Long bells/drones/ambiences are not accents.
+- **Top-level `music`** = one instrumental MOOD/ARRANGEMENT phrase for the whole piece, e.g.
+  `"ominous taiko and shakuhachi, slow, tense, cinematic, fade in, swell under the reveal,
+  soft outro"`. Ducked under narration automatically. Do **not** reuse a generic drone for every
+  video; match the story and leave silence where silence is stronger.
+- **Music choice priority:** use a suitable quality paid/generated bed first when budget allows
+  (`fal-stable-audio`), or a vetted `local`/`freesound` CC0-public-domain bed; then `synth` as a
+  reliable ffmpeg fallback. Do not use copyrighted music, CC-BY/attribution-required tracks,
+  CC-BY-NC/non-commercial audio, platform-restricted music/SFX, or unclear community audio. Do not
+  use the same drone under every video.
+- **Music accents:** for dramatic/emotional moments, add small `Scene.sfx` cues such as
+  `"low swell into the reveal"`, `"soft bell after the quote"`, `"brief dark hit on the cut"`,
+  or `"shimmer under the answer"` with precise `at`, short `dur`, and low `gain_db`. Use these
+  accents to mark turns; don't flood every scene. If it rings through narration, it is too long
+  or too loud.
+- **Providers:** audio can use paid/generated fal (`fal-elevenlabs-sfx`, `fal-stable-audio`),
+  `local` sfx + music (`assets/audio/{sfx,music}/`, keyword-matched),
+  `freesound` CC0/public-domain search (needs `FREESOUND_API_KEY`), or **`synth` music**
+  (ffmpeg-generated beds: dark drone, plucked/ancient pulse, major pad, neutral bed; $0 fallback).
+  Stage SFX with `python scripts/fetch_sfx.py`; stage Freesound music with
+  `python scripts/fetch_music.py`. Run `studio audio <id> --sfx-provider fal-elevenlabs-sfx
+  --music-provider fal-stable-audio` for paid/generated audio, or use local/synth when budget or
+  taste calls for it.
+- **Sound design is its own role** — the **`sound-designer` skill** (`.agent-instructions/skills/sound-designer/`)
   is the audio counterpart to this art-direction guide: hand it a produced run and it authors
-  + renders the whole sound layer (music mood + per-scene sfx), free-first. Reach for it whenever
+  + renders the whole license-safe sound layer (music mood + per-scene sfx). Reach for it whenever
   a Short feels silent or flat, or to add sound to an existing run without re-rendering visuals.
 - **COST: music is the dominant audio cost ($0.20); sfx is ~free.** `--max-cost` is the
   whole-video budget — `studio run` reserves the music bed and **auto-downgrades paid music
-  to free** if it won't fit. To cut the $0.20 without losing music, drop royalty-free tracks
-  (Pixabay / YouTube Audio Library / Mixkit) into `assets/audio/music/` and use
-  `--music-provider local`. Cheapest "still alive" recipe: free `motion-*` everywhere + one
+  to synth** if it won't fit. To cut the $0.20 without losing music, use vetted local/Freesound
+  CC0-public-domain tracks or `--music-provider synth`. Cheapest "still alive" recipe: free `motion-*` everywhere + one
   ≤6s ltx hook + `local` music ≈ $0.41. See `docs/10-architecture/cost-model.md` for the ladder.
 - **Weather/atmosphere = the `atmosphere` field (wired) + ART + SOUND.** Set
   `scene.atmosphere` to `rain|snow|embers|blood|petals|wind|fog` → a free transparent

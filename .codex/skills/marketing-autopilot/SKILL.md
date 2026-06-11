@@ -6,7 +6,7 @@ description: >
   produce, or idle.
 ---
 
-# Claude Code Adapter: marketing-autopilot
+# Codex Adapter: marketing-autopilot
 
 Read the canonical skill before doing this work:
 

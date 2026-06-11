@@ -5,7 +5,7 @@ description: >
   generate falsifiable viral bets and persist them to the marketing backlog.
 ---
 
-# Claude Code Adapter: marketing-ideate
+# Codex Adapter: marketing-ideate
 
 Read the canonical skill before doing this work:
 

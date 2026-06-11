@@ -6,7 +6,7 @@ description: >
   bet, or write a growth brief.
 ---
 
-# Claude Code Adapter: marketing-guru
+# Codex Adapter: marketing-guru
 
 Read the canonical skill before doing this work:
 
