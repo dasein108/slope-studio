@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from examples.make_examples import EFFECTS  # noqa: E402
+from examples.make_music_examples import MUSIC_DEMOS  # noqa: E402
 
 OUT = ROOT / "examples" / "out"
 INDEX = ROOT / "index.html"
@@ -70,7 +71,11 @@ h2 code { background: #1a1e28; padding: 2px 8px; border-radius: 6px; font-size: 
 figure { margin: 0; background: #141823; border: 1px solid #222838; border-radius: 12px;
          overflow: hidden; }
 video { display: block; width: 100%; aspect-ratio: 9/16; background: #000; object-fit: contain; }
+audio { display: block; width: 100%; }
 figcaption { padding: 9px 12px; font-size: 13px; color: #cdd3e0; font-weight: 600; }
+.music-card { padding: 14px; display: grid; gap: 10px; }
+.music-card figcaption { padding: 0; }
+.music-card p { margin: 0; color: #9aa3b8; font-size: 13px; min-height: 3.1em; }
 .missing { padding: 20px; color: #ff8a8a; font-size: 13px; }
 """
 
@@ -103,19 +108,41 @@ def main() -> None:
             f'    <p class="desc">{desc}</p>\n'
             f'    <div class="grid">\n' + "\n".join(items) + "\n    </div>\n  </section>")
 
+    music_items = []
+    for label, _prompt, desc in MUSIC_DEMOS:
+        mp3 = OUT / f"music_synth_{label}.mp3"
+        if not mp3.exists():
+            continue
+        rel = mp3.relative_to(ROOT).as_posix()
+        music_items.append(
+            f'      <figure class="music-card"><figcaption>{label}</figcaption>'
+            f'<p>{desc}</p><audio src="{rel}" controls preload="metadata"></audio></figure>')
+        cards_total += 1
+    if music_items:
+        toc.append('<a href="#music">music</a>')
+        sections.append(
+            '  <section id="music">\n'
+            '    <h2><code>music</code></h2>\n'
+            '    <p class="desc">Free 5-second music-bed samples from the built-in '
+            '<code>synth</code> provider. These are generated locally with ffmpeg and cost $0. '
+            'The other free music paths are <code>local</code> commercial-safe files in '
+            '<code>assets/audio/music/</code> and <code>freesound</code> CC0 search when a '
+            '<code>FREESOUND_API_KEY</code> is configured.</p>\n'
+            '    <div class="grid">\n' + "\n".join(music_items) + "\n    </div>\n  </section>")
+
     html = (
         "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
         "<title>Slope Studio — Effects Gallery</title>\n"
         f"<style>{CSS}</style>\n</head>\n<body>\n"
         "<h1>Slope Studio — Effects Gallery</h1>\n"
-        f'<p class="sub">{cards_total} demo clips · generated {stamp} · '
+        f'<p class="sub">{cards_total} demos · generated {stamp} · '
         "rebuild: <code>python examples/make_examples.py &amp;&amp; python examples/build_index.py</code></p>\n"
         f'<nav><ul class="toc">{"".join(toc)}</ul></nav>\n'
         + "\n".join(sections)
         + "\n</body>\n</html>\n")
     INDEX.write_text(html)
-    print(f"wrote {INDEX}  ({cards_total} clips across {len(sections)} effects)")
+    print(f"wrote {INDEX}  ({cards_total} demos across {len(sections)} sections)")
 
 
 if __name__ == "__main__":

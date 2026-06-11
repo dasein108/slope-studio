@@ -63,14 +63,16 @@ def default_provider(stage: str) -> str:
         return "openai-tts" if h["openai"] else "edge"
     if stage == "sfx":
         if h["fal"]:
-            return "fal-elevenlabs-sfx"  # $0.002/s, commercial-safe
+            return "fal-elevenlabs-sfx"
         if h["freesound"]:
-            return "freesound"  # CC0, free
-        return "local"  # downloaded packs; falls back to silence if empty
+            return "freesound"  # CC0/public-domain, no attribution/community-license risk
+        return "local"  # open local packs; falls back to silence if empty
     if stage == "music":
         if h["fal"]:
-            return "fal-stable-audio"  # $0.20/gen flat bed
-        return "local"  # Pixabay/YouTube-AL/Mixkit packs; silence if empty
+            return "fal-stable-audio"
+        if h["freesound"]:
+            return "freesound"  # CC0/public-domain, no attribution/community-license risk
+        return "local"  # open local packs; silence if empty
     if stage == "publish":
         return "youtube"
     raise ValueError(f"unknown stage {stage}")

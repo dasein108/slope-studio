@@ -122,7 +122,7 @@ renders it.
   `05c_music.mp3`. Produces assets only; the voice stage overlays/ducks them. Skips existing
   unless `--force`.
 - **Provider:** sfx `fal-elevenlabs-sfx`/`freesound`/`local`/`silence`; music
-  `fal-stable-audio`/`freesound`/`local`/`silence`.
+  `fal-stable-audio`/`freesound`/`local`/`synth`/`silence`.
 
 ### Stage 5 — Voice (`voice`)
 - **In:** `04_stitched.mp4`, `05_voice/scenes/*.mp3` (or one-shot TTS fallback), `timing.json`,

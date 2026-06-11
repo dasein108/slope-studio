@@ -57,8 +57,8 @@ Authoritative reference for authoring a scenario (by hand or LLM). The pipeline
     {
       "prompt": "metallic sword clash, sharp",  // vivid sound description
       "at": 0.5,                // seconds INTO this scene to trigger
-      "dur": 1.2,               // requested length (0.5-3; providers clamp <=30s)
-      "gain_db": -3             // level vs narration mix (-6 quiet .. 0 prominent)
+      "dur": 0.8,               // requested length; accents 0.2-2s, hard max 5s
+      "gain_db": -10            // level vs narration mix (-15 quiet .. -6 prominent)
     }
   ]
 }
@@ -86,10 +86,13 @@ Authoritative reference for authoring a scenario (by hand or LLM). The pipeline
 6. **Pick `transition` by narrative flow** — see [`transitions.md`](transitions.md).
 7. **First scene's `transition` is ignored** (nothing precedes it).
 8. **Audio is opt-in by content.** Only add scene `sfx` for a clear diegetic moment
-   (clash, whoosh, slam, breath) — most scenes have none. Set top-level `music` to one
-   instrumental mood phrase, or `""` for silence. Cost only accrues when these are
-   present and a paid provider is selected (balanced/premium tiers); the `stub` script
-   provider leaves both empty so default runs stay $0.
+   (clash, whoosh, slam, breath) or one sharp story accent — most scenes have none.
+   Accent SFX should be 0.2-2s and must never exceed 5s; long bells, drones, rumbles,
+   and ambiences belong in top-level `music` or deliberate environment, not random
+   punctuation. Set top-level `music` to one instrumental mood phrase, or `""` for silence.
+   Cost only accrues when these are present and a paid provider is selected
+   (balanced/premium tiers); the `stub` script provider leaves both empty so default runs
+   stay $0.
 
 ## Minimal valid example
 

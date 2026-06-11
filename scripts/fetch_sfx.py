@@ -56,8 +56,8 @@ monetized video). Do not add CC-BY or CC-BY-NC files.
 
 ## music/
 - `synth` provider: generated locally by `ffmpeg.synth_drone` (no license — fully synthetic).
-- to add tracks: drop **CC0** loops here (Freesound CC0, OpenGameArt CC0). Pixabay audio is
-  free-to-use but NOT CC0/redistributable — use it in a render, don't commit it as a pack.
+- to add tracks: drop **CC0/public-domain or explicitly reusable** loops here. Do not commit
+  CC-BY/attribution-required, non-commercial, platform-restricted, or unclear-license audio.
 
 Regenerate/refresh: `python scripts/fetch_sfx.py`
 """

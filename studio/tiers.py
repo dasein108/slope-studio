@@ -32,9 +32,8 @@ TIER_PRESETS: dict[str, dict[str, str]] = {
         # everything on the cheap image model (~$0.006/img); no char-ref consistency.
         "image": "fal-flux-schnell", "image_cheap": "fal-flux-schnell",
         "voice": "edge", "strategy": "kenburns",
-        # FREE audio ONLY (never paid fal): a synth ffmpeg drone bed + local CC0/synth sfx.
-        # Applied only where it fits (sfx/music prompt rules + the sound-designer skill) —
-        # no clutter, no cues pointing at nothing; silence is preferred over a wrong sound.
+        # Cheap tier avoids paid audio unless explicitly overridden; local/Freesound/synth keep
+        # drafts inexpensive while preserving license-safe sourcing.
         "sfx": "local", "music": "synth",
     },
     "balanced": {

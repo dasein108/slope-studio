@@ -46,7 +46,7 @@ skipping `is_done` stages on resume. `narrate`/`audio` run only with `--with-voi
 `default_provider(stage)` returns a provider name based on which keys are in `.env`, else a
 free fallback. Chains: script `OPENAI→GEMINI→GROQ→OPENROUTER→OLLAMA→stub`; visuals
 `FAL_KEY→card`; clips `FAL_KEY→kenburns`; voice `OPENAI_API_KEY→edge`; sfx
-`FAL_KEY→FREESOUND→local`; music `FAL_KEY→local`. Read secrets via `config.env()`.
+`FAL_KEY→FREESOUND→local`; music `FAL_KEY→FREESOUND→local`. Read secrets via `config.env()`.
 
 ### `tiers.py` — bulk provider presets
 `preset(tier)` → dict of stage→provider. `DEFAULT_MODEL_BY_TIER` picks the i2v model.
@@ -54,7 +54,7 @@ free fallback. Chains: script `OPENAI→GEMINI→GROQ→OPENROUTER→OLLAMA→st
 | tier | script | image (hero) | image_cheap (bg) | video | strategy | voice | sfx | music | i2v model |
 |------|--------|--------------|------------------|-------|----------|-------|-----|-------|-----------|
 | free | stub | card | card | kenburns | kenburns | edge | silence | silence | kling |
-| cheap | stub | fal-flux-schnell | fal-flux-schnell | kenburns | kenburns | edge | local | local | kling |
+| cheap | stub | fal-flux-schnell | fal-flux-schnell | kenburns | kenburns | edge | local | synth | kling |
 | balanced | stub | fal-nanobanana | fal-flux-schnell | fal-i2v | auto | edge | fal-elevenlabs-sfx | fal-stable-audio | ltx |
 | premium | stub | fal-nanobanana | fal-flux-schnell | fal-i2v | all | openai-tts | fal-elevenlabs-sfx | fal-stable-audio | kling |
 
@@ -148,7 +148,8 @@ captions via `SubMaker`), `openai-tts` (gpt-4o-mini-tts, ~$0.015/1k chars, no ca
 ### `audio.py` — sfx + music
 `generate_sfx(provider, prompt, seconds, dst)`, `generate_music(provider, prompt, seconds, dst)`.
 SFX: `fal-elevenlabs-sfx` ($0.002/s, ≤30s), `freesound` (CC0, free), `local` (asset packs),
-`silence`. Music: `fal-stable-audio` ($0.20 flat, ≤~3min), `freesound` (CC0), `local`, `silence`.
+`silence`. Music: `fal-stable-audio` ($0.20 flat, ≤~3min), `freesound` (CC0), `local`, `synth`,
+`silence`.
 
 ### `cardgen.py` — Pillow offline image utilities ($0, no network/GPU)
 `render` (scene card), `caption_strip` (auto-shrink caption PNG for `burn_subs`),

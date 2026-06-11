@@ -62,13 +62,13 @@ No AI video (Ken Burns/stock), free LLM, Pollinations, edge-tts. Verified workab
 2. **Cheaper hosted model** — ltx ($0.04/s ✅ cheapest) / Hailuo / Kling ≪ Veo/Runway/Sora 🔶.
 3. **Shorter hook clip** — i2v snaps to a duration grid: ltx 10s = $0.40 → **6s = $0.24** (keep the AI scene ≤6s). ✅
 4. **Free motion instead of i2v** — `motion-*` (pan/drift/zoom/pulse) and `kenburns` give real motion at **$0**; reserve i2v for the hook (or none). ✅
-5. **Free music bed** — `fal-stable-audio` = $0.20/video; `local` (packs) / `freesound` (CC0 key) = **$0** ✅. sfx is ~$0.002/s — negligible.
+5. **Music bed choice** — `fal-stable-audio` = $0.20/video; `local` (vetted reusable packs) / `freesound` (CC0 key) / `synth` = **$0** ✅. sfx is ~$0.002/s on fal and often $0 locally — negligible.
 6. **Free TTS** — edge-tts/Kokoro → $0 ✅.
 7. **No AI video** — all Ken Burns/stock → $0 ✅ (free tier).
 
 ### Whole-video budget (music included)
 `--max-cost` caps the **entire** video (images + clips + music). `studio run` reserves the
-music-bed cost before the clips stage and **auto-downgrades paid music to free** if it won't
+music-bed cost before the clips stage and **auto-downgrades paid fal music to synth** if it won't
 fit (`studio/cli.py` + `audio.expected_music_cost`). Cost ladder for a ~50s short (Nano Banana stills):
 
 | recipe | total |

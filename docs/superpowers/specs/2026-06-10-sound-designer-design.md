@@ -1,6 +1,6 @@
 # Sound layer + sound-designer role — design
 
-**Date:** 2026-06-10 · **Status:** approved (brainstorming) → implementing
+**Date:** 2026-06-10 · **Status:** implemented, then evolved
 
 ## Problem
 Videos ship with empty/silent music (the `local` music pack is empty → silence) and ad-hoc
@@ -17,12 +17,19 @@ stage — the existing `audio` stage renders; the skill authors the plan.
 ## Components
 
 ### 1. `synth` music provider (free, ffmpeg)
-- `ffmpeg.synth_drone(dst, seconds, root_hz=55, brightness=0.5, minor=True)`: detuned
-  oscillators (root + fifth + octave) + slow tremolo LFO + lowpass (brightness) + faint
-  filtered noise texture + `aecho` (space) + long `afade` in/out. Pure ffmpeg → $0, generative.
-- `audio.generate_music("synth", prompt, seconds, dst)`: map mood words → `(root_hz, brightness,
-  minor)` (cosmic/dread/dark → ~55 Hz, dark, minor; mournful → mid, soft; wry/light → brighter,
-  major). `expected_music_cost("synth") == 0`. Selectable `--music-provider synth`.
+- `ffmpeg.synth_drone`, `ffmpeg.synth_plucked_bed`, and `ffmpeg.synth_major_pad` generate
+  simple $0 beds with built-in fade-in/fade-out.
+- `audio.generate_music("synth", prompt, seconds, dst)`: map mood words to distinct recipes
+  (cosmic/dread/dark → dark drone; mournful → soft minor bed; ancient/folk/lyre → plucked pulse;
+  bright/hopeful → major pad). `expected_music_cost("synth") == 0`. Selectable
+  `--music-provider synth`.
+- Current taste rule: `synth` is a tool, not a blanket default. Do not put the same continuous
+  drone under every video; choose a bed per story, use silence/breathing room where stronger, and
+  use per-scene SFX cues as musical accents for reveals, turns, quotes, and emotional payoff.
+- Current licensing rule: audio must be paid/generated provider output we control, synthetic,
+  CC0/public-domain, or vetted local assets with explicit reusable rights. No CC-BY/
+  attribution-required tracks, CC-BY-NC/non-commercial audio, copyrighted music,
+  platform-restricted music/SFX, or unclear community audio.
 
 ### 2. CC0 SFX library (`assets/audio/sfx/`, gitignored → fetched)
 - `scripts/fetch_sfx.py`: pull curated **Kenney CC0** (impact/whoosh/UI/sci-fi-space) + a few
@@ -33,10 +40,11 @@ stage — the existing `audio` stage renders; the skill authors the plan.
 ### 3. `sound-designer` skill (`.claude/skills/sound-designer/`)
 - The audio counterpart to the art-director. Input: a run's scenes. Output: per-scene `sfx`
   (what / `at` / `dur` / `gain_db`) + `Script.music` mood written into `01_script.json`, then it
-  runs the `audio` stage. **Prefers free tools** (synth music, local CC0 sfx); falls back to fal
-  only for what they can't cover. Taste rules: sound = atmosphere, don't over-cue, voice-forward
-  ducking, match the beat. Frames the flow as "the clip maker requests, the sound-designer
-  produces."
+  runs the `audio` stage. Uses license-safe tools only (fal generated audio when budget allows,
+  synth/local/freesound music, local/freesound CC0 sfx).
+  Taste rules: music = arrangement, not
+  wallpaper; don't over-cue; voice-forward ducking; match the beat; add accents at story turns.
+  Frames the flow as "the clip maker requests, the sound-designer produces."
 
 ### 4. Docs/instructions
 - CLAUDE.md: `synth` in the provider map; `sound-designer` skill; `assets/audio/` lib; **Sound
@@ -48,7 +56,9 @@ stage — the existing `audio` stage renders; the skill authors the plan.
   baseline bed (real taste lives in the skill).
 
 ## Scope guard (YAGNI)
-No new pipeline stage. One music bed per video (not per-scene). No paid layers by default.
+No new pipeline stage. One music bed per video (not per-scene); precise moment accents are handled
+as `Scene.sfx` cues until true per-scene music arrangement exists. Avoid copyrighted, attribution-
+required, non-commercial, platform-restricted, or unclear-license audio layers.
 SFX library is fetched, not committed.
 
 ## Build order

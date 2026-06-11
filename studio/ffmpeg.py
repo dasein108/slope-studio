@@ -76,6 +76,17 @@ def silence(dst: Path, dur: float) -> None:
           "-t", f"{dur:.3f}", "-c:a", "libmp3lame", "-q:a", "4", str(dst)])
 
 
+def trim_audio(src: Path, dst: Path, dur: float, fade: float = 0.08) -> None:
+    """Trim audio to exactly `dur` seconds with tiny edge fades to avoid hard cuts."""
+    dur = max(0.1, float(dur))
+    fade = max(0.0, min(float(fade), dur / 3))
+    filters = f"atrim=0:{dur:.3f},asetpts=PTS-STARTPTS"
+    if fade > 0:
+        filters += f",afade=t=in:st=0:d={fade:.3f},afade=t=out:st={max(0.0, dur - fade):.3f}:d={fade:.3f}"
+    _run(["ffmpeg", "-y", "-i", str(src), "-af", filters, "-t", f"{dur:.3f}",
+          "-c:a", "libmp3lame", "-q:a", "4", str(dst)])
+
+
 def synth_drone(dst: Path, dur: float, root_hz: float = 55.0,
                 brightness: float = 0.5, minor: bool = True) -> None:
     """Generate a FREE, GENTLE ambient drone bed (no library, no model) entirely in ffmpeg.
@@ -103,6 +114,47 @@ def synth_drone(dst: Path, dur: float, root_hz: float = 55.0,
           "aecho=0.85:0.85:140|320:0.5|0.3,"        # resonant, spacious tail
           "volume=1.4,"                             # gentle (was a hot 3.0)
           f"afade=t=in:st=0:d=3,afade=t=out:st={max(0.1, dur - 3):.2f}:d=3")
+    _run(["ffmpeg", "-y", *inputs, "-filter_complex", fc, "-t", f"{dur:.2f}",
+          "-c:a", "libmp3lame", "-q:a", "4", str(dst)])
+
+
+def synth_plucked_bed(dst: Path, dur: float, root_hz: float = 220.0) -> None:
+    """Generate a free plucked/lyre-ish bed with audible pulses and echo.
+
+    This is still simple ffmpeg synthesis, not a real sampled instrument, but it is intentionally
+    more articulated than `synth_drone` so ancient/folk prompts do not sound like the neutral pad.
+    """
+    dur = max(4.0, float(dur))
+    root = max(130.0, float(root_hz))
+    freqs = [root, root * 1.5, root * 2.0, root * 3.0]
+    inputs: list[str] = []
+    for f in freqs:
+        inputs += ["-f", "lavfi", "-i", f"sine=frequency={f:.2f}:duration={dur:.2f}:sample_rate=44100"]
+    fc = (f"amix=inputs={len(freqs)}:duration=longest,"
+          "highpass=f=120,lowpass=f=4200,"
+          "tremolo=f=3.1:d=0.82,"
+          "aecho=0.75:0.78:95|190|380:0.55|0.33|0.18,"
+          "volume=1.15,"
+          f"afade=t=in:st=0:d=0.35,afade=t=out:st={max(0.1, dur - 1):.2f}:d=1")
+    _run(["ffmpeg", "-y", *inputs, "-filter_complex", fc, "-t", f"{dur:.2f}",
+          "-c:a", "libmp3lame", "-q:a", "4", str(dst)])
+
+
+def synth_major_pad(dst: Path, dur: float, root_hz: float = 196.0) -> None:
+    """Generate a free warm major pad with a brighter harmonic color."""
+    dur = max(4.0, float(dur))
+    root = max(130.0, float(root_hz))
+    # Major third included intentionally; the generic drone avoids thirds, but hopeful prompts need it.
+    freqs = [root, root * 1.25, root * 1.5, root * 2.0, root * 2.5]
+    inputs: list[str] = []
+    for f in freqs:
+        inputs += ["-f", "lavfi", "-i", f"sine=frequency={f:.2f}:duration={dur:.2f}:sample_rate=44100"]
+    fc = (f"amix=inputs={len(freqs)}:duration=longest,"
+          "highpass=f=90,lowpass=f=5200,"
+          "tremolo=f=0.42:d=0.22,"
+          "aecho=0.82:0.76:180|420:0.28|0.18,"
+          "volume=0.95,"
+          f"afade=t=in:st=0:d=1.2,afade=t=out:st={max(0.1, dur - 1.4):.2f}:d=1.4")
     _run(["ffmpeg", "-y", *inputs, "-filter_complex", fc, "-t", f"{dur:.2f}",
           "-c:a", "libmp3lame", "-q:a", "4", str(dst)])
 
@@ -656,23 +708,30 @@ def loudnorm(src: Path, dst: Path, i: float = -14.0, tp: float = -1.5,
     tmp.replace(dst)
 
 
-def duck_music(voice: Path, music: Path, dst: Path, music_db: float = -24.0,
+def duck_music(voice: Path, music: Path, dst: Path, music_db: float = -22.5,
                threshold: float = 0.03, ratio: float = 12.0, attack: float = 10.0,
                release: float = 300.0, i: float = -14.0, tp: float = -1.5,
-               lra: float = 11.0) -> None:
+               lra: float = 11.0, fade_in: float = 1.2, fade_out: float = 1.8) -> None:
     """Mix narration over a music bed with sidechain ducking: the voice keys a
     compressor on the music so the bed drops while words play and swells in the gaps.
 
     `music` is looped to cover the full narration, then the mix is trimmed to the
     voice length and loudness-normalized to `i` LUFS. Output is mp3.
     Tune threshold/ratio/attack/release for cleaner ducking; the defaults are a
-    safe voice-over starting point.
+    safe voice-over starting point. The default music bed is deliberately quiet
+    but audible under narration. Music is faded at the composition edges so beds
+    never start or end with a sharp cut.
     """
     vdur = probe_duration(voice)
+    fout = min(max(0.0, fade_out), max(0.0, vdur / 2))
+    fin = min(max(0.0, fade_in), max(0.0, vdur / 2))
+    fade_filters = f"afade=t=in:st=0:d={fin:.3f}"
+    if fout > 0:
+        fade_filters += f",afade=t=out:st={max(0.0, vdur - fout):.3f}:d={fout:.3f}"
     # voice is needed twice (sidechain control + mix), so asplit it.
     fc = (
         f"[0:a]asplit=2[v1][v2];"
-        f"[1:a]volume={music_db}dB[m];"
+        f"[1:a]volume={music_db}dB,{fade_filters}[m];"
         f"[m][v2]sidechaincompress=threshold={threshold}:ratio={ratio}:"
         f"attack={attack}:release={release}[duck];"
         f"[v1][duck]amix=inputs=2:duration=first:dropout_transition=0[mix];"

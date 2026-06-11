@@ -129,8 +129,8 @@ def music_track(d: Path) -> Path:
     return d / "05c_music.mp3"
 
 
-# ---- local audio asset library (downloaded CC0/royalty-free packs) ----------
-# Drop commercial-safe files here, one tag-rich filename per asset, e.g.
+# ---- local audio asset library (downloaded CC0 / licensed-safe packs) --------
+# Drop license-safe files here, one tag-rich filename per asset, e.g.
 # assets/audio/sfx/sword_clash_metal.mp3, assets/audio/music/calm_ambient_lofi.mp3.
 # The `local` audio provider keyword-matches a clip's prompt against filenames.
 AUDIO_LIBRARY_ROOT = Path("assets/audio")
