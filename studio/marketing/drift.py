@@ -2,21 +2,24 @@
 
 Scans the journal for two failure modes:
   1. Topic collapse — >60% of recent bets share the same theme (narrowing kills discovery).
-  2. Safety erosion — safety/guardrail language disappears from the strategy direction
-     (signals the loop is drifting toward un-reviewed content directions).
+  2. Safety erosion — the strategy direction or recent bets drift TOWARD edgy / policy-risky
+     / misleading content (presence of risk terms). NOT the mere absence of safety words —
+     that old heuristic false-fired on every normal creative strategy.
 
 Never modifies the strategy autonomously — flags drift for CEO review only.
 """
 
 from __future__ import annotations
 
+import re
+
 from studio.marketing import journal as jrnl
 from studio import notify
 
-# safety-adjacent terms whose absence in strategy direction is a yellow flag
-_SAFETY_TERMS = frozenset(
-    "avoid safe guardrail responsible quality accuracy fact accurate mislead "
-    "dangerous harmful offensive policy".split()
+# terms whose PRESENCE signals drift toward edgy / policy-risky / misleading content
+_RISK_TERMS = frozenset(
+    "shocking sensational clickbait gore explicit nsfw sexual nude hateful racist slur "
+    "conspiracy hoax scam misleading deceptive disturbing".split()
 )
 
 COLLAPSE_THRESHOLD = 0.60   # >60% of recent bets on same theme = collapse
@@ -44,13 +47,18 @@ def _detect_collapse(j: jrnl.Journal, window: int = COLLAPSE_WINDOW) -> str | No
 
 
 def _detect_safety_erosion(j: jrnl.Journal) -> str | None:
-    """Flag if a non-empty strategy direction lacks safety-adjacent keywords."""
-    direction = (j.strategy.current_direction or "").lower()
-    if not direction or len(j.measured()) < 5:
+    """Flag if the strategy direction or recent bets drift TOWARD edgy / policy-risky /
+    misleading content (presence of risk terms) — not the mere absence of safety words."""
+    if len(j.measured()) < 5:
         return None
-    tokens = set(direction.replace(",", " ").replace(".", " ").split())
-    if not (_SAFETY_TERMS & tokens):
-        return "safety erosion: strategy direction lacks safety/accuracy keywords — review for topic drift"
+    parts = [j.strategy.current_direction or ""]
+    parts += list(j.strategy.winning_patterns) + list(j.strategy.next_seeds)
+    parts += [f"{e.idea or ''} {e.hook or ''}" for e in j.entries[-10:]]
+    tokens = set(re.findall(r"[a-z']+", " ".join(parts).lower()))
+    hits = sorted(_RISK_TERMS & tokens)
+    if hits:
+        return (f"safety erosion: risk terms in strategy/recent bets ({', '.join(hits)}) "
+                "— review for policy/quality drift")
     return None
 
 
