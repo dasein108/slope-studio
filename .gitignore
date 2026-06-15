@@ -75,3 +75,7 @@ articles
 !assets/cover.png
 tiktok_token*.json
 tmp/
+# OAuth token backups (close the .bak leak)
+token*.json.bak
+token*.bak
+*.json.bak
