@@ -114,7 +114,10 @@ Rollback condition: SEO videos underperform P25 after maturation.
   from the channel budget (`budget.cap_for(duration)`) — the autonomous produce can no
   longer overspend even if the cap is omitted. The channel budget is the single source of
   the cap; keep it set (`studio marketing budget --channel <ch> --per-video N --max-per-video N`).
-  An EMPTY budget = no cap = $3 default (this caused j0032/SLO-75 at $2.81 with kling×9).
+  ROOT CAUSE of j0032/SLO-75 ($2.81, kling×9): the OLD `studio run` ignored the channel
+  budget and used its `--max-cost` default of $3, and the produce command omitted
+  `--max-cost` — so kling×9 ($2.80) fit under $3. The budget was NOT empty; nothing read it.
+  This auto-cap closes that gap by reading the budget for every `--channel` run.
 - Prefer cheap clips: kenburns (free) or ltx (~$0.04/scene). kling (~$0.31/scene) blows a
   short's budget fast — only for a single hero scene, never all scenes.
 - Only AI clips cost real money; images are ~$0.006, audio (freesound) is free, and LLM
