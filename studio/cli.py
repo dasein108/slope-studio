@@ -453,12 +453,33 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
             stitch(rid, transition)
         elif stage == "audio":
             if with_voice:
-                mp_eff = musicp
-                left = None if not max_cost else round(max_cost - m.total_cost_usd, 4)
-                if left is not None and audio_costs.expected_music_cost(musicp) > left + 1e-9:
-                    mp_eff = "synth"  # paid generated music won't fit the budget → synth bed
-                    console.print(f"[dim]music → synth (free; only ${left} left of budget)[/]")
-                audio(rid, sfxp, mp_eff, False)
+                from studio.models import Script
+
+                d, m = _load(rid)
+                script = Script.model_validate_json(paths.script_json(d).read_text())
+
+                # Count total SFX cues across all scenes
+                total_sfx = sum(len(s.sfx) for s in script.scenes)
+                # Estimate average SFX duration (conservative: 2.0s per cue)
+                estimated_audio_cost = audio_costs.estimate_total_audio_cost(
+                    sfxp, musicp, n_sfx=total_sfx, avg_sfx_seconds=2.0
+                )
+                remaining_budget = None if not max_cost else round(max_cost - m.total_cost_usd, 4)
+
+                # Pre-spend gate: abort if budget insufficient
+                if remaining_budget is not None and estimated_audio_cost > remaining_budget + 1e-9:
+                    deficit = estimated_audio_cost - remaining_budget
+                    ch_name = channel or "default"
+                    raise RuntimeError(
+                        f"audio budget gate — insufficient budget for audio stage\n"
+                        f"  channel: {ch_name}\n"
+                        f"  remaining budget: ${remaining_budget:.4f}\n"
+                        f"  estimated cost ({total_sfx} SFX @ {sfxp}, {musicp}): ${estimated_audio_cost:.4f}\n"
+                        f"  deficit: ${deficit:.4f}\n"
+                        f"→ reduce SFX count, use free providers (freesound/local/silence), or increase budget cap"
+                    )
+
+                audio(rid, sfxp, musicp, False)
             else:
                 console.print("[dim]skip audio (no voice)[/]")
         elif stage == "voice":
@@ -683,7 +704,9 @@ def m_strategy(channel: str = "", direction: str = "", winning: str = "", losing
 
 @marketing_app.command("budget")
 def m_budget(channel: str = "", per_video: Optional[float] = None,
-             per_minute: Optional[float] = None, for_duration: float = 0.0) -> None:
+             per_minute: Optional[float] = None, for_duration: float = 0.0,
+             max_per_video: Optional[float] = None, daily: Optional[float] = None,
+             slots: str = "") -> None:
     """Set / show the channel's per-video spend budget, or compute a video's --max-cost.
 
     Set ONE of: `--per-video 0.60` (flat cap per video) or `--per-minute 0.40` (rate × video
@@ -699,6 +722,15 @@ def m_budget(channel: str = "", per_video: Optional[float] = None,
         mj.save(j)
     elif per_minute is not None:
         j.budget.mode, j.budget.amount = "per_minute", round(per_minute, 4)
+        mj.save(j)
+    if max_per_video is not None:
+        j.budget.max_per_video = round(max_per_video, 4)
+        mj.save(j)
+    if daily is not None:
+        j.budget.daily_amount = round(daily, 4)
+        mj.save(j)
+    if slots:
+        j.budget.slot_caps = [round(float(x.strip()), 4) for x in slots.split(",") if x.strip()]
         mj.save(j)
 
     if for_duration > 0:  # compute-and-print mode (for the deploy skill / driver)

@@ -74,3 +74,4 @@ articles
 # README cover (override the global *.png ignore)
 !assets/cover.png
 tiktok_token*.json
+tmp/

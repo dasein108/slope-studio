@@ -104,21 +104,42 @@ class BudgetConfig(BaseModel):
 
     mode: str = ""          # "" (unset) | per_video | per_minute
     amount: float = 0.0     # USD per video (per_video) OR USD per minute (per_minute)
+    max_per_video: float = 0.0  # optional hard ceiling applied after mode/slot caps
+    daily_amount: float = 0.0   # optional rolling-24h spend cap
+    slot_caps: list[float] = Field(default_factory=list)  # optional per-produce caps in a day
 
-    def cap_for(self, duration_s: float) -> float | None:
+    def cap_for(self, duration_s: float, slot_index: int = 0,
+                spent_today: float = 0.0) -> float | None:
         """The --max-cost for a video of this length, or None if the budget is unset."""
+        cap: float | None = None
         if self.mode == "per_video":
-            return round(self.amount, 4)
-        if self.mode == "per_minute":
-            return round(self.amount * max(duration_s, 1.0) / 60.0, 4)
-        return None
+            cap = self.amount
+        elif self.mode == "per_minute":
+            cap = self.amount * max(duration_s, 1.0) / 60.0
+        if self.slot_caps:
+            slot = self.slot_caps[min(max(slot_index, 0), len(self.slot_caps) - 1)]
+            cap = slot if cap is None else min(cap, slot)
+        if self.max_per_video > 0:
+            cap = self.max_per_video if cap is None else min(cap, self.max_per_video)
+        if self.daily_amount > 0:
+            remaining = max(0.0, self.daily_amount - spent_today)
+            cap = remaining if cap is None else min(cap, remaining)
+        return round(cap, 4) if cap is not None else None
 
     def describe(self) -> str:
+        extras = []
+        if self.max_per_video > 0:
+            extras.append(f"max ${self.max_per_video:.2f}/video")
+        if self.daily_amount > 0:
+            extras.append(f"daily ${self.daily_amount:.2f}")
+        if self.slot_caps:
+            extras.append("slots " + ", ".join(f"${x:.2f}" for x in self.slot_caps))
+        suffix = f" ({'; '.join(extras)})" if extras else ""
         if self.mode == "per_video":
-            return f"${self.amount:.2f} per video"
+            return f"${self.amount:.2f} per video{suffix}"
         if self.mode == "per_minute":
-            return f"${self.amount:.2f} per minute of video"
-        return "(unset)"
+            return f"${self.amount:.2f} per minute of video{suffix}"
+        return f"(unset){suffix}"
 
 
 class LoopConfig(BaseModel):

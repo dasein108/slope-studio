@@ -89,7 +89,11 @@ def plan(j: jrnl.Journal, now: datetime | None = None) -> Plan:
 
     # 3) produce / ideate cadence
     planned = [e for e in j.entries if e.status == "planned"]
-    produced_24h = sum(1 for e in j.entries if e.published_at and _age_hours(e.published_at, now) < 24)
+    produced_24h_entries = [
+        e for e in j.entries if e.published_at and _age_hours(e.published_at, now) < 24
+    ]
+    produced_24h = len(produced_24h_entries)
+    spent_24h = sum(max(0.0, e.cost_usd or 0.0) for e in produced_24h_entries)
     last_deploy_age = min(
         (_age_hours(e.published_at, now) for e in j.entries if e.published_at), default=1e9
     )
@@ -106,9 +110,14 @@ def plan(j: jrnl.Journal, now: datetime | None = None) -> Plan:
         p.next, p.note = "ideate", f"backlog low ({len(planned)} < {cfg.backlog_min})"
     elif last_deploy_age >= cfg.min_hours_between_produces and produced_24h < cfg.daily_produce_cap:
         e = _pick_next(j, planned, cfg)
+        cap = j.budget.cap_for(cfg.target_duration_s, slot_index=produced_24h, spent_today=spent_24h)
+        if cap is not None and cap <= 0:
+            p.note = f"idle — daily budget reached (${spent_24h:.2f}/${j.budget.daily_amount:.2f})"
+            return p
         p.next, p.produce_entry = "produce", e.id
-        p.produce_max_cost = j.budget.cap_for(cfg.target_duration_s)
-        p.note = f"produce next bet {e.id} ({cfg.select}): {e.idea[:46]}"
+        p.produce_max_cost = cap
+        p.note = (f"produce next bet {e.id} ({cfg.select}, slot {produced_24h + 1}/"
+                  f"{cfg.daily_produce_cap}, spent ${spent_24h:.2f}/24h): {e.idea[:46]}")
     elif produced_24h >= cfg.daily_produce_cap:
         p.note = f"idle — daily produce cap reached ({produced_24h}/{cfg.daily_produce_cap})"
     else:
