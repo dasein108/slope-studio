@@ -48,28 +48,20 @@ script. QA / Critic decides whether it passes.
 - `image_role` is deliberate: `hero` for main people/characters, `bg` for scenery/background.
 - Avoid prompts likely to trigger provider safety blocks.
 
+## Before Writing
+
+Check the channel journal (`runs/_marketing/<channel>/journal.json`) for hooks and story structures that have performed well. Favor proven patterns over untested ones. Let past winners inform the form — you don't need to follow a template.
+
 ## Handoff To QA / Critic
 
-```text
-Gate request: script
-Run id:
-Entry id:
-Target keyword/search phrase:
-Title candidate:
-Hook:
-Assumption:
-Script path: runs/<run_id>/01_script.json
-Known risks:
-```
-
-## Handling QA FAIL
-
-If QA / Critic returns FAIL, read every required fix, rewrite the script,
-summarize what changed, and return to QA / Critic.
+Assign QA / Critic with: run_id, entry_id, title candidate, script path (`runs/<run_id>/01_script.json`), and any known risks. Include enough context for QA to evaluate the promise/delivery alignment.
 
 Do not ask Producer to continue until QA / Critic returns PASS for the script gate.
 
+## Handling QA FAIL
+
+Read every required fix, rewrite the script, summarize what changed, and return to QA / Critic.
+
 After QA / Critic returns script PASS, verify that a Producer task exists for
 the run. If QA did not create it, create it yourself before marking the script
-task done. The Producer task must be assigned to Producer and include the script
-path, run id, entry id, channel, QA verdict, and budget/publish policy context.
+task done. The Producer task must include: script path, run id, entry id, channel, QA verdict, and budget/publish policy context.

@@ -44,23 +44,13 @@ Prefer bets that can move at least one monetization metric:
 Use the Paperclip task `Manage SEO and packaging policy` to change policy on
 the fly. When the user comments there, translate it into the next bet criteria.
 
-## Autopilot Decision Rules
+## Loop Decisions
 
-When `studio marketing tick --channel <channel> --json` returns:
+When assigned a loop tick: check the channel journal, current bet queue, and monetization metrics. Decide which action (ideate / produce / measure / learn) best moves the YPP goal right now. State your reasoning. Delegate to the right role.
 
-- `measure`: assign Analytics & Learning.
-- `learn`: assign Analytics & Learning and require a strategy update.
-- `ideate`: create diverse or SEO-focused bets depending on current policy.
-- `produce`: hand selected entry to Screenwriter.
-- `idle`: ask Secretary to report why idle.
+If a script has QA PASS but no Producer task exists, create it before selecting a new bet.
 
-If all active work is done but a script has QA PASS and no Producer task, create
-the missing Producer task before selecting a new bet. Never let the company end
-a heartbeat with no open task while there is a passed script that has not been
-produced, final-QAed, published/blocked, and linked.
-
-Cold-start rule: until 10 videos are deployed, prioritize exploration and cheap
-learning over heavy exploitation.
+Cold-start (first 10 videos): prefer exploration and cheap learning over heavy exploitation.
 
 ## Packaging / SEO Gate (per video, before publish)
 
@@ -134,13 +124,3 @@ Duration:
 Constraints:
 ```
 
-## Paperclip Comment Template
-
-```text
-Loop state:
-Decision:
-SEO/strategy reason:
-Delegated to:
-Expected output:
-Next trigger:
-```
