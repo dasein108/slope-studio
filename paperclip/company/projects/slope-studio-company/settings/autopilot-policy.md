@@ -110,6 +110,15 @@ Rollback condition: SEO videos underperform P25 after maturation.
 - Cheap/capped exploration is preferred until cold-start completes.
 - `--max-cost` is whole-video budget: images, video clips, and music.
 - Paid clips require estimate or budget cap.
+- HARD COST CAP (2026-06-15): `studio run --channel <ch>` now AUTO-derives `--max-cost`
+  from the channel budget (`budget.cap_for(duration)`) — the autonomous produce can no
+  longer overspend even if the cap is omitted. The channel budget is the single source of
+  the cap; keep it set (`studio marketing budget --channel <ch> --per-video N --max-per-video N`).
+  An EMPTY budget = no cap = $3 default (this caused j0032/SLO-75 at $2.81 with kling×9).
+- Prefer cheap clips: kenburns (free) or ltx (~$0.04/scene). kling (~$0.31/scene) blows a
+  short's budget fast — only for a single hero scene, never all scenes.
+- Only AI clips cost real money; images are ~$0.006, audio (freesound) is free, and LLM
+  (script/critic + all agent reasoning) is on subscription = not metered. Optimize CLIP spend.
 - Public publish is UNATTENDED (CEO disabled approval 2026-06-14). QA final PASS → Producer publishes + links directly, no CEO approval task.
 - Never spend on visuals/clips downstream of `--script-provider stub`.
 

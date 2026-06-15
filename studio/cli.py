@@ -403,14 +403,17 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
         ai_scenes: Optional[str] = None,
         publish_to: Optional[str] = None, privacy: str = "public", channel: str = "",
         from_stage: str = "script", to_stage: str = "save",
-        run_id: Optional[str] = None, max_cost: float = 3.0,
+        run_id: Optional[str] = None, max_cost: float = -1.0,
         critic: str = "on", critic_retries: int = 2,
         critic_provider: Optional[str] = None) -> None:
     """Full pipeline idea -> master (+ optional publish), with resume.
 
     --tier free|cheap|balanced|premium sets all stage providers + video strategy;
     any --*-provider / --video-strategy / --video-model flag overrides the preset.
-    Spend is capped by --max-cost (0 disables); the clips stage trims/aborts to fit.
+    Spend is capped by --max-cost; the clips stage trims/aborts to fit. Default is AUTO:
+    when --channel is set, the cap is derived from that channel's budget (so autonomous
+    produce can never overspend); otherwise $3. Pass --max-cost 0 to disable, or a number
+    to override.
 
     --critic on|off|strict gates the SCENARIO on content (topic revealed · fact explained ·
     informative+interesting · emotion) before any paid visuals/clips. "on" (default) reworks
@@ -429,6 +432,17 @@ def run(idea: str, duration: int = 150, aspect: str = "9:16", with_voice: bool =
     strat = "hybrid" if ai_scenes else (video_strategy or p["strategy"])
     vmodel = video_model or ("wan-local" if video_provider == "local-i2v"
                              else tiers.DEFAULT_MODEL_BY_TIER.get(tier, "kling"))
+
+    # AUTO max-cost (SLO cost-control): default -1 means "derive a HARD cap from the
+    # channel budget". Autonomous produce always passes --channel, so it can never
+    # blow the budget on AI clips (e.g. kling-every-scene) even if the cap is omitted.
+    if max_cost < 0:
+        if channel:
+            from studio.marketing import journal as mj
+            cap = mj.load(channel).budget.cap_for(float(duration))
+            max_cost = cap if cap is not None else 3.0
+        else:
+            max_cost = 3.0
 
     if run_id and manifest.manifest_path(paths.run_dir(run_id)).exists():
         rid = run_id  # resume an existing run
