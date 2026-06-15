@@ -8,6 +8,9 @@ better than the last.
 
 from __future__ import annotations
 
+import fcntl
+import os
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
@@ -222,11 +225,84 @@ def load(channel: str = "") -> Journal:
     return Journal(channel=channel)
 
 
+def _lock_path(channel: str = ""):
+    return paths.marketing_dir(channel) / "journal.lock"
+
+
+@contextmanager
+def _file_lock(channel: str = "", timeout: float = 15.0):
+    """Exclusive advisory lock on a channel's journal — serializes writers so writes
+    never interleave or tear. flock has no native timeout, so poll non-blocking."""
+    import time as _t
+    paths.marketing_dir(channel).mkdir(parents=True, exist_ok=True)
+    f = open(_lock_path(channel), "w")
+    try:
+        start = _t.monotonic()
+        while True:
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if _t.monotonic() - start > timeout:
+                    raise TimeoutError(f"journal lock busy > {timeout}s ({_lock_path(channel)})")
+                _t.sleep(0.05)
+        yield
+    finally:
+        try:
+            fcntl.flock(f, fcntl.LOCK_UN)
+        finally:
+            f.close()
+
+
+def validate(j: Journal) -> None:
+    """Write-validation gate — refuse structurally-corrupt writes (SLO-35)."""
+    if not j.channel:
+        raise ValueError("journal has no channel")
+    ids = [e.id for e in j.entries]
+    dups = sorted({i for i in ids if ids.count(i) > 1})
+    if dups:
+        raise ValueError(f"duplicate entry ids: {dups}")
+
+
+def _atomic_write(path, text: str) -> None:
+    """Write via temp + rename so readers never see a half-written file."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def _write_locked(j: Journal) -> None:
+    # Auto-merge any entries another writer added since this journal was loaded, so a
+    # concurrent save can never silently DROP a bet (the lost-update we set out to fix).
+    jp = paths.journal_json(j.channel)
+    if jp.exists():
+        on_disk = Journal.model_validate_json(jp.read_text())
+        have = {e.id for e in j.entries}
+        missing = [e for e in on_disk.entries if e.id not in have]
+        if missing:
+            j.entries.extend(missing)
+    validate(j)
+    _atomic_write(jp, j.model_dump_json(indent=2))
+    _atomic_write(paths.journal_md(j.channel), render_md(j))
+
+
 def save(j: Journal) -> None:
-    d = paths.marketing_dir(j.channel)
-    d.mkdir(parents=True, exist_ok=True)
-    paths.journal_json(j.channel).write_text(j.model_dump_json(indent=2))
-    paths.journal_md(j.channel).write_text(render_md(j))
+    """Validated, atomic, lock-protected write (SLO-35). Serializes concurrent writers,
+    never tears a file, and merges concurrently-added entries so bets aren't lost. For
+    full read-modify-write safety on the SAME entries, use `transaction()`."""
+    paths.marketing_dir(j.channel).mkdir(parents=True, exist_ok=True)
+    with _file_lock(j.channel):
+        _write_locked(j)
+
+
+@contextmanager
+def transaction(channel: str = "", timeout: float = 15.0):
+    """Atomic read-modify-write: holds the lock across load→mutate→save so concurrent
+    writers cannot cause lost updates. Usage: `with journal.transaction(ch) as j: ...`"""
+    with _file_lock(channel, timeout):
+        j = load(channel)
+        yield j
+        _write_locked(j)
 
 
 def render_md(j: Journal) -> str:
