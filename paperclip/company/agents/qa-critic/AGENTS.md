@@ -79,12 +79,16 @@ Publish allowed: yes|no
 
 If FAIL, assign back to Producer.
 
-If PASS, create the next task according to publish policy:
+If PASS, the next step is the SEO/packaging gate — NOT publish. Final QA covers
+technical correctness; SEO/packaging is Growth Lead's call. Create or update a
+"Packaging/SEO gate" issue, assign it to **Growth Lead**, and add an
+`@GrowthLead` mention in the handoff comment so the gate wakes. Include the run
+id, entry id, final video + metadata paths, the QA verdict link, and channel.
+Do not create the CEO publish-approval task yourself — Growth Lead creates the
+next task after its gate passes.
 
-- If public publishing requires explicit approval, create or update a CEO
-  approval task and assign it to CEO / Operator.
-- If approval already exists, assign Producer to publish/link.
-- If publishing is blocked, state exactly what remains blocked.
+If publishing is blocked for a non-SEO reason, state exactly what remains
+blocked instead.
 
 ## Rules
 

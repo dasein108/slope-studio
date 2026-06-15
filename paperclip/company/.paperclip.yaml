@@ -17,75 +17,91 @@ sidebar:
   projects:
     - slope-studio-company
 
+# All agents run the Claude Code adapter (claude_local). Idle/periodic heartbeats are
+# DISABLED (heartbeat.enabled=false) — agents wake only on assignment, @mention, or the
+# kept cron routine. Models: Opus for creative/QA, Sonnet for working roles, Haiku for light.
+# (Runtime mutated live via PATCH /api/agents/<id>; this file kept in sync for future imports.)
 agents:
   ceo-operator:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.4-mini
+        model: claude-sonnet-4-6
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.4-mini
+      heartbeat:
+        enabled: false
     permissions:
       approvalRequiredForSpend: true
       approvalRequiredForPublish: false
   growth-lead:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.5
-        search: true
+        model: claude-sonnet-4-6
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.5
+      heartbeat:
+        enabled: false
   screenwriter:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.5
-        search: true
+        model: claude-opus-4-8
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.5
+      heartbeat:
+        enabled: false
   producer:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.5
-        search: true
+        model: claude-sonnet-4-6
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.5
+      heartbeat:
+        enabled: false
     permissions:
       approvalRequiredForPaidStages: true
   qa-critic:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.5
+        model: claude-opus-4-8
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.5
+      heartbeat:
+        enabled: false
     permissions:
       canBlockPaidStages: true
       canBlockPublish: true
   analytics-learning:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.5
+        model: claude-sonnet-4-6
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.5
+      heartbeat:
+        enabled: false
   observability-ops:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.4-mini
-        search: true
+        model: claude-haiku-4-5-20251001
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.4-mini
+      heartbeat:
+        enabled: false
   secretary:
     adapter:
-      type: codex_local
+      type: claude_local
       config:
-        model: gpt-5.4-mini
+        model: claude-haiku-4-5-20251001
+        dangerouslySkipPermissions: true
     runtime:
-      defaultModel: gpt-5.4-mini
+      heartbeat:
+        enabled: false
     delivery:
       channel: telegram
 
@@ -105,24 +121,16 @@ projects:
       defaultMode: shared_workspace
       allowIssueOverride: true
 
+# Only the daily org autopilot timer is kept — it is the cycle initiator + the deferred-
+# measurement clock. The secretary-report and observability-review routines were DISABLED
+# 2026-06-15 (paused + trigger disabled in runtime) to cut timer-driven token burn; secretary
+# is covered by per-video Telegram pings (studio/notify.py). Re-enable in runtime if wanted.
 routines:
   daily-org-autopilot:
     triggers:
       - kind: schedule
         label: Daily growth autopilot
         cronExpression: "0 9 * * *"
-        timezone: Asia/Makassar
-  daily-secretary-report:
-    triggers:
-      - kind: schedule
-        label: Daily Telegram report
-        cronExpression: "0 18 * * *"
-        timezone: Asia/Makassar
-  weekly-observability-review:
-    triggers:
-      - kind: schedule
-        label: Weekly observability and cost review
-        cronExpression: "0 10 * * 1"
         timezone: Asia/Makassar
 
 inputs:

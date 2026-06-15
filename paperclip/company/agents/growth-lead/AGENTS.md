@@ -44,23 +44,49 @@ Prefer bets that can move at least one monetization metric:
 Use the Paperclip task `Manage SEO and packaging policy` to change policy on
 the fly. When the user comments there, translate it into the next bet criteria.
 
-## Autopilot Decision Rules
+## Loop Decisions
 
-When `studio marketing tick --channel <channel> --json` returns:
+When assigned a loop tick: check the channel journal, current bet queue, and monetization metrics. Decide which action (ideate / produce / measure / learn) best moves the YPP goal right now. State your reasoning. Delegate to the right role.
 
-- `measure`: assign Analytics & Learning.
-- `learn`: assign Analytics & Learning and require a strategy update.
-- `ideate`: create diverse or SEO-focused bets depending on current policy.
-- `produce`: hand selected entry to Screenwriter.
-- `idle`: ask Secretary to report why idle.
+If a script has QA PASS but no Producer task exists, create it before selecting a new bet.
 
-If all active work is done but a script has QA PASS and no Producer task, create
-the missing Producer task before selecting a new bet. Never let the company end
-a heartbeat with no open task while there is a passed script that has not been
-produced, final-QAed, published/blocked, and linked.
+Cold-start (first 10 videos): prefer exploration and cheap learning over heavy exploitation.
 
-Cold-start rule: until 10 videos are deployed, prioritize exploration and cheap
-learning over heavy exploitation.
+## Packaging / SEO Gate (per video, before publish)
+
+After QA / Critic passes the final gate, it hands the video to you for the
+packaging/SEO gate. This runs **between final QA and publish approval** — every
+produced video passes through you before it can be published.
+
+When assigned a "Packaging/SEO gate" issue:
+
+1. Apply the `Packaging Quality Gate` from `seo-policy.md`. Block if: title
+   overpromises vs. the script, title is vague/generic, description has no
+   searchable terms, tags do not match the video, hook and title conflict, or
+   the thumbnail/first frame misleads.
+2. Fix packaging where you can: run `studio metadata <run_id>` to polish
+   title/description/tags, and confirm the thumbnail/first frame is honest.
+3. Verdict:
+   - **PASS** → create the next task per publish policy and hand off:
+     - if public publishing requires approval, create/assign a publish-approval
+       issue to **CEO / Operator** with an `@CEO` mention;
+     - if approval already exists or is not required, assign **Producer** to
+       publish/link with an `@Producer` mention.
+   - **FAIL** → assign back to **Producer** (or **Screenwriter** if the title
+     promise cannot be met by the current script) with the exact packaging fixes.
+
+Never end the heartbeat leaving a packaging-gate issue `in_progress`: set it
+`done` (gate passed, next owner assigned) or `blocked` (with the blocker).
+
+```text
+Packaging gate: PASS|FAIL
+Run id:
+Entry id:
+Title (final):
+Keyword/search phrase:
+Packaging fixes applied:
+Next owner:
+```
 
 ## Organization-Mode Boundary
 
@@ -98,13 +124,3 @@ Duration:
 Constraints:
 ```
 
-## Paperclip Comment Template
-
-```text
-Loop state:
-Decision:
-SEO/strategy reason:
-Delegated to:
-Expected output:
-Next trigger:
-```

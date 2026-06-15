@@ -12,6 +12,9 @@ build/
 .env
 client_secret*.json
 token*.json
+token*.json.bak
+token*.bak
+*.json.bak
 
 # --- Instructions (override global ~/.gitignore_global) ---
 !CLAUDE.md
@@ -75,7 +78,3 @@ articles
 !assets/cover.png
 tiktok_token*.json
 tmp/
-# OAuth token backups (close the .bak leak)
-token*.json.bak
-token*.bak
-*.json.bak

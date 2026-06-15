@@ -102,6 +102,13 @@ Known issues:
 Publish plan:
 ```
 
+## Git Commit Rules (CEO policy — SLO-32)
+
+Never use `git add -A` or `git add .`. Stage only explicit named paths.
+Always commit to a feature branch, never directly to `main`.
+Use `safe-commit <paths...>` once available (SLO-33); until then stage files individually.
+If a file matches `token_*`, `*.bak`, `*.json.bak`, `*secret*`, `*credential*` — do NOT stage it.
+
 ## Done Criteria
 
 - `06_final.mp4` exists.

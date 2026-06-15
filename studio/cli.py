@@ -361,6 +361,21 @@ def unlist(video_id: str, channel: str = "", privacy: str = "unlisted") -> None:
     from studio.providers import publish as pub
     status = pub.set_privacy(video_id, privacy, channel)
     console.print(f"[green]{video_id}[/] → {status}")
+    # propagate to marketing stats: unlisted/private videos must not count toward
+    # percentiles, the bandit, or learning (SLO-39). Recompute over the public portfolio.
+    from studio.marketing import journal as mj
+    from studio.marketing import score as mscore
+    j = mj.load(channel)
+    e = next((x for x in j.entries if x.video_id == video_id), None)
+    if e is not None:
+        e.unlisted = privacy != "public"
+        measured = j.measured()
+        for x, p in zip(measured, mscore.relativize([x.virality for x in measured])):
+            x.percentile = p
+            x.outcome = mscore.outcome(p, j.in_cold_start)
+        mj.save(j)
+        console.print(f"[dim]journal {e.id}: unlisted={e.unlisted} → stats recomputed over "
+                      f"{len(measured)} public videos[/]")
 
 
 @app.command("yt-channel")
@@ -601,7 +616,7 @@ def m_ideate(channel: str = "", provider: Optional[str] = None, n: int = 1,
         e = mj.Entry(id=j.next_id(), idea=d.get("idea", ""), hook=d.get("hook", ""),
                      assumption=d.get("assumption", ""), goal=d.get("goal", ""),
                      theme=d.get("theme", ""), tags=d.get("tags", []),
-                     explore=j.in_cold_start)
+                     explore=j.in_cold_start, playbook_version=j.playbook_version)
         j.entries.append(e)
         console.print(f"[green]{e.id}[/] {e.idea}")
         console.print(f"  [dim]hook:[/] {e.hook}")
@@ -627,7 +642,7 @@ def m_add(idea: str, channel: str = "", hook: str = "", assumption: str = "",
     j = mj.load(channel)
     e = mj.Entry(id=j.next_id(), idea=idea, hook=hook, assumption=assumption, goal=goal,
                  theme=theme, tags=[t.strip() for t in tags.split(",") if t.strip()],
-                 explore=not exploit)
+                 explore=not exploit, playbook_version=j.playbook_version)
     j.entries.append(e)
     mj.save(j)
     console.print(f"[green]{e.id}[/] queued (planned) — {e.idea}")
@@ -667,6 +682,38 @@ def m_recall(query: str, channel: str = "", k: int = 6) -> None:
     console.print(block or "[dim](nothing measured yet — explore)[/]")
 
 
+@marketing_app.command("exclude")
+def m_exclude(entry_id: str, channel: str = "", restore: bool = typer.Option(False, "--restore"),
+              deleted: bool = typer.Option(False, "--deleted")) -> None:
+    """Exclude (or --restore) a bet from channel statistics (SLO-39).
+
+    Use when a video is unlisted/private/removed on YouTube so its metrics must NOT skew
+    percentiles, the bandit, or learning. Marks the journal entry `unlisted` (or `--deleted`
+    to retire it), then recomputes percentiles over the remaining public portfolio. The
+    `studio unlist` command does this automatically when you flip YouTube privacy."""
+    from studio.marketing import journal as mj
+    from studio.marketing import score as mscore
+
+    j = mj.load(channel)
+    e = j.get(entry_id)
+    if e is None:
+        console.print(f"[red]no entry {entry_id}[/]")
+        raise typer.Exit(1)
+    val = not restore
+    if deleted:
+        e.deleted = val
+    else:
+        e.unlisted = val
+    measured = j.measured()
+    for x, p in zip(measured, mscore.relativize([x.virality for x in measured])):
+        x.percentile = p
+        x.outcome = mscore.outcome(p, j.in_cold_start)
+    mj.save(j)
+    flag = "deleted" if deleted else "unlisted"
+    console.print(f"[green]{entry_id}[/] {flag}={val} — stats recomputed over "
+                  f"{len(measured)} public videos")
+
+
 @marketing_app.command("strategy")
 def m_strategy(channel: str = "", direction: str = "", winning: str = "", losing: str = "",
                seeds: str = "", niche: str = "", note: str = "") -> None:
@@ -700,6 +747,43 @@ def m_strategy(channel: str = "", direction: str = "", winning: str = "", losing
             console.print(f"[yellow]no entry {eid.strip()} — note skipped[/]")
     mj.save(j)
     console.print(f"[green]strategy updated[/] — {channel or 'default'}")
+
+
+@marketing_app.command("set-playbook-version")
+def m_set_playbook_version(version: str, channel: str = "") -> None:
+    """Record the current agent instruction version in the journal.
+
+    Stamp this whenever Growth Lead or Screenwriter instructions change. New bets
+    created after this call inherit the version; `learn` groups outcomes by version
+    for A/B attribution so the CEO can compare instruction revisions head-to-head."""
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    j.playbook_version = version
+    mj.save(j)
+    console.print(f"[green]playbook version set[/] → {version!r} ({channel or 'default'})")
+
+
+@marketing_app.command("drift")
+def m_drift(channel: str = "", notify: bool = typer.Option(False, "--notify")) -> None:
+    """Scan the journal for strategy drift (topic collapse / safety erosion).
+
+    Prints any detected signals. Pass --notify to send a Telegram alert.
+    Never modifies the strategy — flags for CEO review only."""
+    from studio.marketing import drift as mdrift
+    from studio.marketing import journal as mj
+
+    j = mj.load(channel)
+    signals = mdrift.detect(j)
+    if not signals:
+        console.print("[green]no drift detected[/]")
+        return
+    console.print("[yellow bold]drift signals:[/]")
+    for s in signals:
+        console.print(f"  [yellow]• {s}[/]")
+    if notify:
+        sent = mdrift.notify_drift(signals, channel)
+        console.print("[dim]Telegram alert sent.[/]" if sent else "[dim]Telegram not configured.[/]")
 
 
 @marketing_app.command("budget")
@@ -1104,7 +1188,11 @@ def m_export(channel: str = "", format: str = "csv", include_scenes: bool = Fals
 
 @marketing_app.command("learn")
 def m_learn(channel: str = "", provider: Optional[str] = None) -> None:
-    """Step 3b — reflect on measured bets → update strategy + next idea seeds."""
+    """Step 3b — reflect on measured bets → update strategy + next idea seeds.
+
+    Also runs drift detection (topic collapse / safety erosion) and sends a
+    Telegram alert if signals are found — for CEO review, not autonomous action."""
+    from studio.marketing import drift as mdrift
     from studio.marketing import journal as mj
     from studio.marketing import learn as mlearn
 
@@ -1117,6 +1205,20 @@ def m_learn(channel: str = "", provider: Optional[str] = None) -> None:
         console.print(f"[bold]next direction:[/] {j.strategy.current_direction}")
     for s in j.strategy.next_seeds:
         console.print(f"  [dim]seed:[/] {s}")
+    if j.strategy.playbook_attributions:
+        console.print("[bold]playbook attribution:[/]")
+        for v, stats in j.strategy.playbook_attributions.items():
+            console.print(f"  {v}: n={stats['n']} wins={stats['wins']} "
+                          f"win_rate={stats['win_rate']:.0%} "
+                          f"median_virality={stats['median_virality']:.4f}")
+    signals = mdrift.detect(j)
+    if signals:
+        console.print("[yellow bold]drift detected:[/]")
+        for s in signals:
+            console.print(f"  [yellow]• {s}[/]")
+        sent = mdrift.notify_drift(signals, channel)
+        if sent:
+            console.print("[dim]Telegram alert sent.[/]")
 
 
 @marketing_app.command("journal")
