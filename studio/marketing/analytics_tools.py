@@ -76,7 +76,7 @@ def metric_at(e: mj.Entry, bucket: str = "latest") -> tuple[mj.Metrics | None, f
 def due_entries(j: mj.Journal, buckets: Iterable[int] = DEFAULT_BUCKETS) -> list[dict]:
     due: list[dict] = []
     for e in j.entries:
-        if not e.video_id or e.status not in ("deployed", "measured"):
+        if not e.video_id or e.status not in ("deployed", "measured") or e.unlisted or e.deleted:
             continue
         age = age_days(e)
         missing = [
@@ -235,7 +235,8 @@ def compare_entries(entries: list[mj.Entry], feature: str, bucket: str, metric: 
 
 
 def insights(j: mj.Journal) -> dict:
-    measured = [e for e in j.entries if e.metrics or e.snapshots]
+    measured = [e for e in j.entries
+                if (e.metrics or e.snapshots) and not e.unlisted and not e.deleted]
     buckets = ["1d", "3d", "7d", "14d", "30d", "latest"]
     groups = ["theme", "effects", "animators", "music_provider", "sfx_provider", "video_model", "tier"]
     out: dict = {

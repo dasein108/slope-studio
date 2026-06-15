@@ -108,6 +108,8 @@ class Entry(BaseModel):
     comments_sample: list[str] = Field(default_factory=list)
     learnings: str = ""                   # what this bet taught us (filled by `learn`)
     reflection: Reflection | None = None  # structured rich reflection (filled by `learn`)
+    unlisted: bool = False                # set unlisted/private on YouTube — EXCLUDE from all stats
+    deleted: bool = False                 # entry retired — EXCLUDE from all stats
 
 
 class BudgetConfig(BaseModel):
@@ -199,11 +201,13 @@ class Journal(BaseModel):
         return next((e for e in self.entries if e.id == entry_id), None)
 
     def measured(self) -> list[Entry]:
-        return [e for e in self.entries if e.status == "measured" and e.virality is not None]
+        return [e for e in self.entries if e.status == "measured" and e.virality is not None
+                and not e.unlisted and not e.deleted]
 
     @property
     def deployed_count(self) -> int:
-        return sum(1 for e in self.entries if e.status in ("deployed", "measured"))
+        return sum(1 for e in self.entries
+                   if e.status in ("deployed", "measured") and not e.unlisted and not e.deleted)
 
     @property
     def in_cold_start(self) -> bool:

@@ -361,6 +361,21 @@ def unlist(video_id: str, channel: str = "", privacy: str = "unlisted") -> None:
     from studio.providers import publish as pub
     status = pub.set_privacy(video_id, privacy, channel)
     console.print(f"[green]{video_id}[/] → {status}")
+    # propagate to marketing stats: unlisted/private videos must not count toward
+    # percentiles, the bandit, or learning (SLO-39). Recompute over the public portfolio.
+    from studio.marketing import journal as mj
+    from studio.marketing import score as mscore
+    j = mj.load(channel)
+    e = next((x for x in j.entries if x.video_id == video_id), None)
+    if e is not None:
+        e.unlisted = privacy != "public"
+        measured = j.measured()
+        for x, p in zip(measured, mscore.relativize([x.virality for x in measured])):
+            x.percentile = p
+            x.outcome = mscore.outcome(p, j.in_cold_start)
+        mj.save(j)
+        console.print(f"[dim]journal {e.id}: unlisted={e.unlisted} → stats recomputed over "
+                      f"{len(measured)} public videos[/]")
 
 
 @app.command("yt-channel")
@@ -665,6 +680,38 @@ def m_recall(query: str, channel: str = "", k: int = 6) -> None:
     j = mj.load(channel)
     block = memory.recall_block(j, query, k=k)
     console.print(block or "[dim](nothing measured yet — explore)[/]")
+
+
+@marketing_app.command("exclude")
+def m_exclude(entry_id: str, channel: str = "", restore: bool = typer.Option(False, "--restore"),
+              deleted: bool = typer.Option(False, "--deleted")) -> None:
+    """Exclude (or --restore) a bet from channel statistics (SLO-39).
+
+    Use when a video is unlisted/private/removed on YouTube so its metrics must NOT skew
+    percentiles, the bandit, or learning. Marks the journal entry `unlisted` (or `--deleted`
+    to retire it), then recomputes percentiles over the remaining public portfolio. The
+    `studio unlist` command does this automatically when you flip YouTube privacy."""
+    from studio.marketing import journal as mj
+    from studio.marketing import score as mscore
+
+    j = mj.load(channel)
+    e = j.get(entry_id)
+    if e is None:
+        console.print(f"[red]no entry {entry_id}[/]")
+        raise typer.Exit(1)
+    val = not restore
+    if deleted:
+        e.deleted = val
+    else:
+        e.unlisted = val
+    measured = j.measured()
+    for x, p in zip(measured, mscore.relativize([x.virality for x in measured])):
+        x.percentile = p
+        x.outcome = mscore.outcome(p, j.in_cold_start)
+    mj.save(j)
+    flag = "deleted" if deleted else "unlisted"
+    console.print(f"[green]{entry_id}[/] {flag}={val} — stats recomputed over "
+                  f"{len(measured)} public videos")
 
 
 @marketing_app.command("strategy")
