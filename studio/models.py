@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SoundCue(BaseModel):
@@ -48,6 +48,13 @@ class Scene(BaseModel):
     mouth_xy: list[float] = Field(default_factory=list)  # [x,y] or [x,y,width] mouth anchor+size frac (0-1); omitted fields -> LLM auto-detect; default [0.5,0.6,0.18]
     limbs: list[Limb] = Field(default_factory=list)  # animator=puppet: per-limb joint rotation (hand up/wave); effects/puppet.md
     sfx: list[SoundCue] = Field(default_factory=list)  # sound effects to lay over this scene
+
+    @field_validator("fx", "mouth_xy", "limbs", "sfx", mode="before")
+    @classmethod
+    def _empty_string_as_empty_list(cls, value):
+        if value == "":
+            return []
+        return value
 
     @property
     def duration_s(self) -> float:

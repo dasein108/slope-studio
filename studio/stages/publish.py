@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from studio import paths
+from studio import notify, paths
 from studio.providers import publish as pub
 from studio.providers.base import GenResult
 
@@ -24,4 +24,6 @@ def run(run_dir: Path, provider: str, privacy: str = "public",
     paths.publish_json(run_dir).write_text(json.dumps({
         "provider": provider, "privacy": privacy, "channel": channel, "result": res.note,
     }, indent=2))
+    url = res.note.split()[0] if res.note else ""
+    notify.published(meta.get("title", ""), url, channel=channel, privacy=privacy)
     return res

@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from studio import canvas, paths
 from studio.models import Script
 from studio.providers import image
 from studio.providers.base import GenResult
+
+
+# Aspect-ratio token (e.g. "9:16", "16:9") that the script LLM sometimes bakes into a
+# scene's visual_prompt despite instructions not to. Prompt-literal image models
+# (fal-flux-schnell, pollinations) render it as on-screen text → QA Gate-2 rejects.
+# Aspect already lives in `script.aspect` (sent as an API param), so it must never reach
+# the image prompt. Strip every occurrence plus any trailing/leading separators.
+_ASPECT_TOKEN = re.compile(r"\s*,?\s*\b\d{1,2}:\d{1,2}\b")
+
+
+def _strip_aspect_token(prompt: str) -> str:
+    """Remove any aspect-ratio token (digits:digits) from an image prompt."""
+    cleaned = _ASPECT_TOKEN.sub("", prompt)
+    return re.sub(r"\s+", " ", cleaned).strip(" ,")
 
 
 PLATE_SUFFIX = (
@@ -63,7 +78,8 @@ def run(run_dir: Path, provider: str, char_ref: Path | None = None,
         else:
             prov, use_refs = provider, refs
         # reinforce consistency: prepend the reusable character string.
-        prompt = scene.visual_prompt
+        # strip any leaked aspect-ratio token so prompt-literal models don't render it.
+        prompt = _strip_aspect_token(scene.visual_prompt)
         if script.character and script.character not in prompt:
             prompt = f"{script.character}. {prompt}"
         if not (dst.exists() and not force):

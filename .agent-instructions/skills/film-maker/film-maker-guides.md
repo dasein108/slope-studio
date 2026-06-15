@@ -96,6 +96,12 @@ These come from direct feedback — treat as **hard defaults** unless the user s
     that SAME description verbatim into every scene showing it, and/or pass a
     `--char-ref` still so Nano-Banana holds the identity. Decide the canon up front and
     repeat it — don't re-describe ad hoc each scene.
+14. **Precise math/science objects must be exact.** If the video is about a specific
+    mathematical shape, diagram, apparatus, graph, molecule, orbit, or mechanism, do NOT
+    trust a generic cinematic prompt to invent it. Render it procedurally, use a precise
+    diagram/manim scene, or explicitly constrain the image from a reference. A Gabriel's
+    Horn video must show the surface of revolution of `y = 1/x` around its axis, with the
+    flared mouth and tapering tail; an image-model "surreal horn" is a content error.
 
 ---
 

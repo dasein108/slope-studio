@@ -72,6 +72,29 @@ def expected_music_cost(provider: str) -> float:
     return FAL_MUSIC_COST if provider == "fal-stable-audio" else 0.0
 
 
+def estimate_total_audio_cost(sfx_provider: str, music_provider: str,
+                              n_sfx: int = 0, avg_sfx_seconds: float = 2.0) -> float:
+    """Estimate total cost for audio stage: SFX + music bed.
+
+    Args:
+        sfx_provider: SFX provider name (fal-elevenlabs-sfx, freesound, local, silence, etc.)
+        music_provider: Music provider (fal-stable-audio, freesound, local, synth, silence)
+        n_sfx: Expected number of SFX cues to generate
+        avg_sfx_seconds: Average duration of each SFX cue
+
+    Returns:
+        Estimated USD cost (conservative upper bound).
+    """
+    music_cost = expected_music_cost(music_provider)
+
+    sfx_cost = 0.0
+    if sfx_provider == "fal-elevenlabs-sfx" and n_sfx > 0:
+        # $0.002/second, capped at 30s per effect
+        sfx_cost = round(n_sfx * min(avg_sfx_seconds, SFX_MAX_S) * FAL_SFX_COST_PER_S, 4)
+
+    return round(music_cost + sfx_cost, 4)
+
+
 # --------------------------------------------------------------------------- SFX
 def generate_sfx(provider: str, prompt: str, seconds: float, dst: Path) -> GenResult:
     """Produce one sound effect for `prompt` (~`seconds` long) at `dst` (mp3)."""
