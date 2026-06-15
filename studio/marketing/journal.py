@@ -41,6 +41,16 @@ class MetricSnapshot(Metrics):
     bucket: str = ""                       # 1d | 3d | 7d | 14d | 30d
 
 
+class Reflection(BaseModel):
+    """Structured post-measurement learning for one bet (richer than a bare string)."""
+
+    assumption_held: bool | None = None    # did the stated assumption prove out?
+    what_worked: str = ""                  # hook type / topic / format that helped
+    what_didnt: str = ""                   # what detracted from performance
+    next_try: str = ""                     # concrete next experiment suggested by this bet
+    written_at: str = ""
+
+
 class Entry(BaseModel):
     """A single bet: an idea + the assumption it tests, tracked to its outcome."""
 
@@ -54,6 +64,7 @@ class Entry(BaseModel):
     theme: str = ""
     tags: list[str] = Field(default_factory=list)
     explore: bool = True                   # exploration bet vs exploitation of a known winner
+    playbook_version: str = ""             # instruction version at bet creation time
     # --- deployment (step 2) ---
     status: str = "planned"               # planned | deployed | measured
     run_id: str = ""
@@ -96,6 +107,7 @@ class Entry(BaseModel):
     outcome: str = ""                     # win | loss | neutral | cold-start
     comments_sample: list[str] = Field(default_factory=list)
     learnings: str = ""                   # what this bet taught us (filled by `learn`)
+    reflection: Reflection | None = None  # structured rich reflection (filled by `learn`)
 
 
 class BudgetConfig(BaseModel):
@@ -165,6 +177,8 @@ class Strategy(BaseModel):
     losing_patterns: list[str] = Field(default_factory=list)
     next_seeds: list[str] = Field(default_factory=list)  # concrete idea seeds for ideate
     updated_at: str = ""
+    # {playbook_version -> {n, wins, median_virality}} — filled by `learn` for A/B attribution
+    playbook_attributions: dict[str, dict] = Field(default_factory=dict)
 
 
 class Journal(BaseModel):
@@ -175,6 +189,7 @@ class Journal(BaseModel):
     last_learn_at: str = ""                # ISO ts of the last strategy reflection
     strategy: Strategy = Field(default_factory=Strategy)
     entries: list[Entry] = Field(default_factory=list)
+    playbook_version: str = ""             # current instruction version (stamped onto new bets)
 
     # -- queries --
     def next_id(self) -> str:

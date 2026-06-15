@@ -5,11 +5,18 @@ audience comments) to an LLM and asks: which assumptions held? what pattern wins
 here? what's the single best next direction + concrete idea seeds? The result is
 written back into the journal's `Strategy`, which `ideate` then consumes — closing
 the loop. Deterministic fallback derives patterns from percentile ranks alone.
+
+Rich reflection (arXiv:2303.11366, arXiv:2405.06682): per-bet structured Reflection
+objects replace bare string learnings so the loop accumulates *actionable* lessons.
+
+Playbook attribution: outcomes are grouped by `entry.playbook_version` so the CEO
+can compare instruction revisions head-to-head.
 """
 
 from __future__ import annotations
 
 import json
+import statistics
 
 from studio.marketing import journal as jrnl
 from studio.providers import llm
@@ -32,7 +39,15 @@ Analyze and return JSON exactly:
   "losing_patterns": ["concrete traits of the bottom performers"],
   "current_direction": "one paragraph: the thesis for what to make next and why",
   "next_seeds": ["3-5 specific next idea seeds that exploit the winners"],
-  "entry_learnings": {{"<entry_id>": "one line: did its assumption hold?"}}
+  "entry_learnings": {{"<entry_id>": "one line: did its assumption hold?"}},
+  "entry_reflections": {{
+    "<entry_id>": {{
+      "assumption_held": true,
+      "what_worked": "the hook/topic/format trait that drove performance",
+      "what_didnt": "what detracted or underperformed expectations",
+      "next_try": "one concrete follow-up experiment"
+    }}
+  }}
 }}"""
 
 
@@ -61,12 +76,32 @@ def _fallback(j: jrnl.Journal) -> None:
                            "above; the loop needs an LLM key for deeper analysis.")
 
 
+def _update_playbook_attributions(j: jrnl.Journal) -> None:
+    """Group measured outcomes by playbook_version and save aggregate stats."""
+    versioned: dict[str, list[jrnl.Entry]] = {}
+    for e in j.measured():
+        v = e.playbook_version or "(unversioned)"
+        versioned.setdefault(v, []).append(e)
+    attrs: dict[str, dict] = {}
+    for v, entries in versioned.items():
+        viralities = [e.virality for e in entries if e.virality is not None]
+        wins = sum(1 for e in entries if e.outcome == "win")
+        attrs[v] = {
+            "n": len(entries),
+            "wins": wins,
+            "win_rate": round(wins / len(entries), 3) if entries else 0.0,
+            "median_virality": round(statistics.median(viralities), 4) if viralities else 0.0,
+        }
+    j.strategy.playbook_attributions = attrs
+
+
 def reflect(j: jrnl.Journal, provider: str) -> str:
-    """Update j.strategy (and per-entry learnings) from measured bets. Returns a note."""
+    """Update j.strategy (and per-entry reflections) from measured bets. Returns a note."""
     measured = sorted(j.measured(), key=lambda e: e.virality or 0, reverse=True)
     if not measured:
         return "no measured videos yet — deploy + `marketing measure` first"
     phase = "cold-start" if j.in_cold_start else "optimizing"
+    _update_playbook_attributions(j)
     if not provider or provider == "stub":
         _fallback(j)
         j.strategy.updated_at = j.last_learn_at = jrnl._now()
@@ -86,6 +121,16 @@ def reflect(j: jrnl.Journal, provider: str) -> str:
             e = j.get(eid)
             if e:
                 e.learnings = note
+        for eid, rd in (data.get("entry_reflections") or {}).items():
+            e = j.get(eid)
+            if e and isinstance(rd, dict):
+                e.reflection = jrnl.Reflection(
+                    assumption_held=rd.get("assumption_held"),
+                    what_worked=rd.get("what_worked", ""),
+                    what_didnt=rd.get("what_didnt", ""),
+                    next_try=rd.get("next_try", ""),
+                    written_at=jrnl._now(),
+                )
         return f"strategy updated from {len(measured)} videos via {provider}"
     except Exception as e:
         _fallback(j)
