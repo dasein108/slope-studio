@@ -4,6 +4,14 @@
 # core.hooksPath=scripts/hooks), including autonomous agents.
 # Humans may override with `git commit --no-verify`; agents MUST NOT.
 
+# 0) Block direct commits to main/master — agents must use a feature branch (SLO-33).
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+  echo "BLOCKED: direct commits to '$branch' are not allowed (SLO-33) — use a feature branch." >&2
+  echo "Humans only: git commit --no-verify." >&2
+  exit 1
+fi
+
 fail=0
 
 # 1) Block secret-bearing FILENAMES being added/modified.
