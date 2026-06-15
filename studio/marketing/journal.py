@@ -96,6 +96,8 @@ class Entry(BaseModel):
     outcome: str = ""                     # win | loss | neutral | cold-start
     comments_sample: list[str] = Field(default_factory=list)
     learnings: str = ""                   # what this bet taught us (filled by `learn`)
+    unlisted: bool = False                # video set to unlisted on YouTube — exclude from stats
+    deleted: bool = False                 # video deleted from YouTube — exclude from stats
 
 
 class BudgetConfig(BaseModel):
@@ -184,7 +186,9 @@ class Journal(BaseModel):
         return next((e for e in self.entries if e.id == entry_id), None)
 
     def measured(self) -> list[Entry]:
-        return [e for e in self.entries if e.status == "measured" and e.virality is not None]
+        return [e for e in self.entries
+                if e.status == "measured" and e.virality is not None
+                and not e.unlisted and not e.deleted]
 
     @property
     def deployed_count(self) -> int:

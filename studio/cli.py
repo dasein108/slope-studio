@@ -895,7 +895,8 @@ def m_measure(channel: str = "", comments_n: int = 60, force: bool = False) -> N
     from studio.providers import analytics
 
     j = mj.load(channel)
-    targets = [e for e in j.entries if e.video_id and e.status in ("deployed", "measured")]
+    targets = [e for e in j.entries
+               if e.video_id and e.status in ("deployed", "measured") and not e.deleted]
     if not targets:
         console.print("[yellow]nothing to measure[/] — link deployed runs first (`marketing link`).")
         return
@@ -971,7 +972,8 @@ def m_snapshots(channel: str = "", buckets: str = "1,3,7,14,30", force: bool = F
 
     j = mj.load(channel)
     bucket_days = mat.parse_buckets(buckets)
-    targets = [e for e in j.entries if e.video_id and e.status in ("deployed", "measured")]
+    targets = [e for e in j.entries
+               if e.video_id and e.status in ("deployed", "measured") and not e.deleted]
     stats = analytics.video_stats([e.video_id for e in targets], channel)
     written: list[tuple[str, list[str]]] = []
     for e in targets:

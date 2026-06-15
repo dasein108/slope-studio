@@ -76,7 +76,7 @@ def metric_at(e: mj.Entry, bucket: str = "latest") -> tuple[mj.Metrics | None, f
 def due_entries(j: mj.Journal, buckets: Iterable[int] = DEFAULT_BUCKETS) -> list[dict]:
     due: list[dict] = []
     for e in j.entries:
-        if not e.video_id or e.status not in ("deployed", "measured"):
+        if not e.video_id or e.status not in ("deployed", "measured") or e.deleted:
             continue
         age = age_days(e)
         missing = [
