@@ -125,6 +125,20 @@ def _youtube(video: Path, title: str, description: str, tags: list[str],
     )
     resp = req.execute()
     vid = resp["id"]
+    actual_privacy = resp.get("status", {}).get("privacyStatus", "")
+    if actual_privacy and actual_privacy != privacy:
+        # YouTube silently overrode the requested privacy (e.g. new-channel review hold).
+        # Force it to the requested value immediately via videos.update().
+        import sys
+        print(
+            f"WARNING: YouTube set privacy={actual_privacy!r} instead of {privacy!r} "
+            f"for {vid}; correcting via videos.update()",
+            file=sys.stderr,
+        )
+        yt.videos().update(
+            part="status",
+            body={"id": vid, "status": {"privacyStatus": privacy, "selfDeclaredMadeForKids": False}},
+        ).execute()
     # set the custom preview/thumbnail (requires a verified channel; ignore if refused).
     if thumbnail and thumbnail.exists():
         try:
