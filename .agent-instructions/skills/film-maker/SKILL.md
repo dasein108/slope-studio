@@ -262,6 +262,32 @@ studio publish $RID --target youtube --privacy unlisted --channel <name>
 - Custom thumbnails need a **verified** YouTube channel; if the account isn't verified the
   upload still succeeds, the thumbnail is just skipped.
 
+### ⑦.5 retire / reupload an already-published video
+
+Flip an existing upload's privacy, or replace a 16:9 upload with a fresh 9:16 Short.
+Needs the `youtube.force-ssl` OAuth scope on the channel token.
+
+```bash
+# Just retire (hide) an existing video — no reupload. USE THIS, not the raw helper:
+studio unlist <VIDEO_ID> --channel <name>            # default privacy=unlisted; --privacy private|public
+#   ↑ flips YouTube privacy AND sets journal entry.unlisted → recomputes percentiles/bandit/
+#     outcome over the PUBLIC portfolio (SLO-39). A retired video stops skewing stats.
+
+# Retire old + reupload the master as a 9:16 Short (converts, uploads, patches journal):
+python3 scripts/reupload_as_shorts.py \
+  --run-id <run-id> --old-video-id <VIDEO_ID> --channel <name>
+#   --old-privacy unlisted|private   old video state after reupload (default: unlisted)
+#   --skip-convert   reuse existing 06_final_shorts.mp4
+#   --skip-upload    dry run (retire only, no new upload)
+```
+- **Journal reflection:** `studio unlist` sets `entry.unlisted` so the video drops out of all
+  stats. The raw `publish.set_privacy(...)` helper does **not** — it only calls the YouTube API.
+  Prefer `studio unlist` whenever the video has a journal entry.
+- Reupload = a **new** `video_id` → zero views/analytics, cold-start; the journal entry is
+  swapped to the new id and its metrics/snapshots cleared. Prefer `unlisted` over `private`
+  for the old one so its comments/analytics stay reachable by direct link.
+- New Short only counts as a Short if ≤180s (see the ⚠️ length note above).
+
 ## 3.5 Animation & transitions (per-scene, free)
 
 > **Authoring for QUALITY?** Read [`film-maker-guides.md`](film-maker-guides.md) —
@@ -392,6 +418,7 @@ find runs/$RID -type f | sort      # every artifact produced
 | clips too short / trimmed | i2v caps at 5/10s; long scenes need splitting in stage 1. |
 | output shorter than expected | Fixed via `apad` in mux; if recurring, check narration vs video length. |
 | TikTok publish raises | By design — audit-gated. Default to `--privacy self_only` or use YouTube. |
+| need to unlist/replace a live video | See ⑦.5 — `studio unlist <id> --channel <name>` (also drops it from journal stats), or `scripts/reupload_as_shorts.py` to retire + reupload as a Short. Needs `youtube.force-ssl` scope. |
 
 ## 7. After producing
 
