@@ -31,6 +31,17 @@ class Manifest(BaseModel):
         return round(sum(s.cost_usd for s in self.stages.values()), 4)
 
     def record(self, stage: str, **kw) -> None:
+        # Re-recording a stage must never erase money already spent on it: a resumed /
+        # re-run stage skips existing artifacts and would otherwise clobber the real
+        # cost with $0 (and the budget guard, which subtracts total_cost_usd, would
+        # re-allow already-spent budget). Costs accumulate across invocations — each
+        # call passes only what THIS invocation spent; an omitted cost carries forward.
+        prev = self.stages.get(stage)
+        if prev is not None:
+            if "cost_usd" in kw:
+                kw["cost_usd"] = round(prev.cost_usd + float(kw["cost_usd"] or 0.0), 4)
+            else:
+                kw["cost_usd"] = prev.cost_usd
         self.stages[stage] = StageRecord(**kw)
 
     def is_done(self, stage: str) -> bool:
