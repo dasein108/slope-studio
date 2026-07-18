@@ -23,14 +23,18 @@ h2 code { background: #1a1e28; padding: 2px 8px; border-radius: 6px; font-size: 
 figure { margin: 0; background: #141823; border: 1px solid #222838; border-radius: 12px;
          overflow: hidden; }
 video { display: block; width: 100%; aspect-ratio: 9/16; background: #000; object-fit: contain; }
+audio { display: block; width: 100%; }
 figcaption { padding: 9px 12px; font-size: 13px; color: #cdd3e0; font-weight: 600; }
+.music-card { padding: 14px; display: grid; gap: 10px; }
+.music-card figcaption { padding: 0; }
+.music-card p { margin: 0; color: #9aa3b8; font-size: 13px; min-height: 3.1em; }
 .missing { padding: 20px; color: #ff8a8a; font-size: 13px; }
 </style>
 </head>
 <body>
 <h1>Slope Studio — Effects Gallery</h1>
-<p class="sub">59 demo clips · generated 2026-06-06 19:54 · rebuild: <code>python examples/make_examples.py &amp;&amp; python examples/build_index.py</code></p>
-<nav><ul class="toc"><a href="#puppet">puppet</a><a href="#atmosphere">atmosphere</a><a href="#fx">fx</a><a href="#slice">slice</a><a href="#parallax">parallax</a><a href="#blurred-parallax">blurred-parallax</a><a href="#motion">motion</a><a href="#kinetic">kinetic</a><a href="#static">static</a><a href="#manim">manim</a><a href="#talkinghead">talkinghead</a><a href="#transitions">transitions</a></ul></nav>
+<p class="sub">65 demos · generated 2026-07-18 10:54 · rebuild: <code>python examples/make_examples.py &amp;&amp; python examples/build_index.py</code></p>
+<nav><ul class="toc"><a href="#puppet">puppet</a><a href="#atmosphere">atmosphere</a><a href="#fx">fx</a><a href="#slice">slice</a><a href="#parallax">parallax</a><a href="#blurred-parallax">blurred-parallax</a><a href="#motion">motion</a><a href="#kinetic">kinetic</a><a href="#static">static</a><a href="#manim">manim</a><a href="#talkinghead">talkinghead</a><a href="#transitions">transitions</a><a href="#music">music</a></ul></nav>
   <section id="puppet">
     <h2><code>puppet</code></h2>
     <p class="desc">Free cutout animation — the figure moves itself: idle bob/sway, hop, shake/nod head, and per-limb raise/wave (rembg cutout, $0).</p>
@@ -160,6 +164,18 @@ figcaption { padding: 9px 12px; font-size: 13px; color: #cdd3e0; font-weight: 60
       <figure><video src="examples/out/transitions_circleopen.mp4" controls loop muted autoplay playsinline></video><figcaption>circleopen</figcaption></figure>
       <figure><video src="examples/out/transitions_pixelize.mp4" controls loop muted autoplay playsinline></video><figcaption>pixelize</figcaption></figure>
       <figure><video src="examples/out/transitions_radial.mp4" controls loop muted autoplay playsinline></video><figcaption>radial</figcaption></figure>
+    </div>
+  </section>
+  <section id="music">
+    <h2><code>music</code></h2>
+    <p class="desc">Free 5-second music-bed samples from the built-in <code>synth</code> provider. These are generated locally with ffmpeg and cost $0. The other free music paths are <code>local</code> commercial-safe files in <code>assets/audio/music/</code> and <code>freesound</code> CC0 search when a <code>FREESOUND_API_KEY</code> is configured.</p>
+    <div class="grid">
+      <figure class="music-card"><figcaption>cosmic-dread</figcaption><p>Low, dark, minor drone for space, black holes, vast scale, dread, and awe.</p><audio src="examples/out/music_synth_cosmic-dread.mp3" controls preload="metadata"></audio></figure>
+      <figure class="music-card"><figcaption>mournful</figcaption><p>Soft darker bed for tragic history, loss, grief, and solemn reflection.</p><audio src="examples/out/music_synth_mournful.mp3" controls preload="metadata"></audio></figure>
+      <figure class="music-card"><figcaption>tense-mystery</figcaption><p>Suspenseful drone for puzzles, paradoxes, reveals, and unsettling facts.</p><audio src="examples/out/music_synth_tense-mystery.mp3" controls preload="metadata"></audio></figure>
+      <figure class="music-card"><figcaption>ancient-lyre</figcaption><p>Brighter ancient/folk color for philosophy, myth, classical scenes, and warm irony.</p><audio src="examples/out/music_synth_ancient-lyre.mp3" controls preload="metadata"></audio></figure>
+      <figure class="music-card"><figcaption>bright-hopeful</figcaption><p>Major, warmer bed for optimistic, curious, playful, or light explanatory shorts.</p><audio src="examples/out/music_synth_bright-hopeful.mp3" controls preload="metadata"></audio></figure>
+      <figure class="music-card"><figcaption>neutral-ambient</figcaption><p>Middle-ground fallback when no strong mood is specified.</p><audio src="examples/out/music_synth_neutral-ambient.mp3" controls preload="metadata"></audio></figure>
     </div>
   </section>
 </body>
