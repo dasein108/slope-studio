@@ -1118,6 +1118,13 @@ def m_measure(channel: str = "", comments_n: int = 60, force: bool = False) -> N
         m.subs_gained = analytics.subs_gained(e.video_id, channel)
         mscore.derive(m)
         e.metrics = m
+        # append an age-bucketed snapshot so metrics form a time series (3d→7d→30d
+        # growth curves, age-normalized velocity) instead of one overwritten number.
+        # Re-measuring inside the same bucket replaces that bucket's snapshot.
+        bucket = min((("1d", 1), ("3d", 3), ("7d", 7), ("14d", 14), ("30d", 30)),
+                     key=lambda b: abs(st["age_days"] - b[1]))[0]
+        snap = mj.MetricSnapshot(**m.model_dump(), bucket=bucket)
+        e.snapshots = [s for s in e.snapshots if s.bucket != bucket] + [snap]
         e.published_at = e.published_at or st["published_at"]
         e.virality = mscore.virality(m)
         e.status = "measured"

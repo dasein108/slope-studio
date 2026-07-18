@@ -83,13 +83,20 @@ def from_run(run_dir: Path) -> dict:
     if out["duration_s"] > 0:
         out["cost_per_minute"] = round(out["cost_usd"] / (out["duration_s"] / 60.0), 4)
 
-    # video model: the clips stage records provider as "strategy:model" (e.g. "auto:kling")
+    # video model: the clips stage records provider as "strategy:model" (e.g. "auto:kling").
+    # The AI-scene count comes ONLY from the stage note "(N AI via model)" — it counts real
+    # i2v generations. A model that was configured but generated 0 clips (e.g. provider
+    # "kenburns:kling") is NOT this video's model; recording it as such contaminated the
+    # model-vs-outcome analytics (SLO-211).
     clips = m.stages.get("clips")
     if clips and clips.provider:
-        out["video_model"] = clips.provider.split(":")[-1]
+        model = clips.provider.split(":")[-1]
         match = re.search(r"\((\d+)\s+AI\b", clips.note)
         if match:
             out["ai_scene_count"] = int(match.group(1))
+            out["video_model"] = model if out["ai_scene_count"] > 0 else ""
+        else:
+            out["video_model"] = model
 
     voice = m.stages.get("voice") or m.stages.get("narrate")
     if voice and voice.provider:
@@ -99,6 +106,11 @@ def from_run(run_dir: Path) -> dict:
     if audio and audio.provider:
         out["sfx_provider"] = _provider_stage(audio.provider, 0)
         out["music_provider"] = _provider_stage(audio.provider, 1)
+
+    # per-stage cost breakdown (image vs video vs audio spend) for ROI analytics
+    out["image_cost_usd"] = _cost(m, "visuals")
+    out["video_cost_usd"] = _cost(m, "clips")
+    out["audio_cost_usd"] = round(_cost(m, "audio") + _cost(m, "narrate") + _cost(m, "voice"), 4)
 
     # animators + effects come from the authored scenes
     sp = paths.script_json(run_dir)
@@ -147,7 +159,11 @@ def from_run(run_dir: Path) -> dict:
             out["effect_counts"] = effect_counts
             out["atmosphere_counts"] = atmosphere_counts
             out["transition_counts"] = transition_counts
-            out["ai_scene_count"] = max(0, len(script.scenes) - out["kenburns_scene_count"])
+            # NOTE: do NOT derive ai_scene_count from the scenes here — free animators
+            # (drift/parallax/slice/...) are not AI generations. The only truthful source
+            # is the clips-stage note parsed above; scenes would count every non-kenburns
+            # free animator as "AI" (this bug inflated ai_scene_count to n_scenes on
+            # zero-spend videos).
         except Exception:
             pass
     return out
