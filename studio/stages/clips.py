@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from studio import animate, canvas, ffmpeg, paths
+from studio import animate, artdirect, canvas, ffmpeg, paths
 from studio.models import Scene, Script
 from studio.providers import video
 from studio.providers.base import GenResult
@@ -90,6 +90,16 @@ def run(run_dir: Path, strategy: str = "kenburns", model: str = "kling",
     script = Script.model_validate_json(paths.script_json(run_dir).read_text())
     canvas.set_from_aspect(script.aspect)
     paths.clips_dir(run_dir).mkdir(parents=True, exist_ok=True)
+
+    # ENFORCE ART-DIRECTION RAILS AT THE RENDER BOUNDARY. Agent-/hand-authored scripts
+    # (written straight to 01_script.json, never through the script stage) bypass
+    # artdirect.decorate() — the zoom ban, the parallax-on-subject guard, atmosphere
+    # justification, and the taste caps. Re-validate on a fresh render (no clips yet,
+    # or --force) and persist, so telemetry records what actually renders. Skipped on
+    # partial resumes to keep already-rendered clips consistent with recorded scenes.
+    if force or not any(paths.scene_clip(run_dir, s.id).exists() for s in script.scenes):
+        script = artdirect.decorate(script)
+        paths.script_json(run_dir).write_text(script.model_dump_json(indent=2))
 
     # per-scene clip durations from narration (if the narrate stage ran), else the
     # script's planned timings. This is what keeps clips synced to the voiceover.

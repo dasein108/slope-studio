@@ -312,7 +312,7 @@ def _parse_ids(spec: str | None) -> set[int] | None:
 
 @app.command()
 def narrate(run_id: str, provider: Optional[str] = None, voice: str = "",
-            tone: str = "") -> None:
+            tone: str = "", continuous: bool = False) -> None:
     """Pre-clips TTS: synth each scene, derive clip durations + aligned captions.
 
     --voice man|woman|cartoon|narrator  --tone neutral|serious|mystical|friendly|sad|excited
@@ -320,7 +320,7 @@ def narrate(run_id: str, provider: Optional[str] = None, voice: str = "",
     """
     d, m = _load(run_id)
     prov = provider or config.default_provider("voice")
-    r = narrate_stage.run(d, prov, voice_name=voice, tone=tone)
+    r = narrate_stage.run(d, prov, voice_name=voice, tone=tone, continuous=continuous)
     m.record("narrate", done=True, provider=prov, cost_usd=r.cost_usd,
              latency_s=r.latency_s, note=r.note)
     manifest.save(d, m)
