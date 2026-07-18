@@ -41,7 +41,16 @@ def synth_scene(provider: str, text: str, mp3: Path, voice_name: str = "woman",
     to the clip start (empty if the provider yields no timing)."""
     cfg = voices.resolve(provider, voice_name, tone)
     if provider == "edge":
-        return asyncio.run(_edge_scene(text, mp3, cfg))
+        # edge throttles bursts (a long run synthesizes dozens of scenes back to
+        # back) and randomly returns NoAudioReceived — retry with backoff before
+        # failing the whole narrate stage.
+        for attempt in range(3):
+            try:
+                return asyncio.run(_edge_scene(text, mp3, cfg))
+            except Exception:
+                if attempt == 2:
+                    raise
+                time.sleep(3 * (attempt + 1))
     if provider == "openai-tts":
         _openai(text, mp3, cfg)
         return []

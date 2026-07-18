@@ -37,6 +37,11 @@ def run(run_dir: Path, provider: str, voice: str = "", captions: str = "off",
     if paths.timing_json(run_dir).exists() and all(p.exists() for p in scene_audios):
         # narrate stage already synthesized per-scene audio aligned to the clips.
         ffmpeg.concat_audio(scene_audios, mp3)
+    elif mp3.exists() and paths.timing_json(run_dir).exists():
+        # narrate --continuous: one fluent track already on disk, clips were cut to
+        # its word-boundary timings — use it untouched (re-synthesizing or concat
+        # would reintroduce the per-scene micro-pauses)
+        pass
     else:
         # fallback: synth the whole script at once (legacy path)
         res = tts.synth(provider, narration, mp3, srt=srt,

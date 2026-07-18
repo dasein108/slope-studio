@@ -14,6 +14,10 @@ EDGE_VOICES = {
     "man": "en-US-GuyNeural",
     "narrator": "en-GB-RyanNeural",
     "cartoon": "en-US-AnaNeural",   # child voice; pitched up below for a cartoon feel
+    # non-English narration (story-illustrator books keep the source language):
+    "ru-narrator": "ru-RU-DmitryNeural",
+    "ru-man": "ru-RU-DmitryNeural",
+    "ru-woman": "ru-RU-SvetlanaNeural",
 }
 # edge tone -> (rate, pitch). rate like "+0%", pitch like "+0Hz".
 EDGE_TONES = {

@@ -97,3 +97,10 @@ blocked instead.
 - FAIL must include exact required fixes and the owner.
 - You may block publishing even if Producer wants to continue.
 - A PASS is not complete until the next owner has an assigned Paperclip task.
+- **Declining a duplicate/dead bet: NEVER cancel the ticket you are handing back.**
+  A cancelled ticket wakes its assignee to nothing — the handoff dies silently and
+  the whole day's production stalls. Instead: (a) set the journal entry `cancelled`
+  so the bandit can't re-pick it, (b) cancel only the write-script ticket, and
+  (c) create a **fresh OPEN `todo` ticket assigned to Growth Lead** titled
+  "Select fresh bet to replace <id>" with the dup evidence and 2–3 verified-unused
+  subject suggestions.

@@ -46,11 +46,35 @@ the fly. When the user comments there, translate it into the next bet criteria.
 
 ## Loop Decisions
 
-When assigned a loop tick: check the channel journal, current bet queue, and monetization metrics. Decide which action (ideate / produce / measure / learn) best moves the YPP goal right now. State your reasoning. Delegate to the right role.
+When assigned a loop tick: check the channel journal, current bet queue, and monetization metrics. Decide which actions (ideate / produce / measure / learn) best move the YPP goal right now. State your reasoning. Delegate to the right role.
 
 If a script has QA PASS but no Producer task exists, create it before selecting a new bet.
 
 Cold-start (first 10 videos): prefer exploration and cheap learning over heavy exploitation.
+
+## Daily Cadence: THREE Videos Per Day (hard target)
+
+The channel policy is **3 published videos per day** — 2 exploit slots (learned winning
+patterns) + 1 explore slot (a deliberate experimental bet), per CEO content vision.
+
+On the daily tick:
+
+1. Count videos already published today (journal `published_at`) plus bets in flight
+   (script/produce/publish tickets open today). Call it N.
+2. If N < 3: register (3 − N) fresh bets in the journal and dispatch a **separate
+   Screenwriter script ticket for EACH** — in this same heartbeat, not one-at-a-time
+   across days. Slots move through the pipeline in parallel; that is the design.
+3. Never end the daily tick with fewer than 3 slots either published or in flight.
+   One published video is a missed day, not a success.
+
+## Duplicate Check (MANDATORY, before registering ANY bet)
+
+Check the candidate **subject** (the person/event/concept — not the title or angle)
+against **EVERY entry in `runs/_marketing/<channel>/journal.json` — all statuses:
+measured, deployed, cancelled, deleted**. A subject that appears anywhere is BANNED:
+same subject with a new angle is still a duplicate (it cannibalizes the existing video).
+Do NOT rely on remembering recent bets — grep the full journal each time. If your pick
+collides, pick another subject, not another angle.
 
 ## Packaging / SEO Gate (per video, before publish)
 

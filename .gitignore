@@ -78,3 +78,13 @@ articles
 !assets/cover.png
 tiktok_token*.json
 tmp/
+# --- Paperclip local agent scratch (contains live API tokens) ---
+.pc_env.tmp
+.pc_hb.sh
+.pc_*
+
+# --- Story-illustrator raw material (source prose + reference photos, never in git) ---
+stories/*
+!stories/README.md
+characters/*
+!characters/README.md

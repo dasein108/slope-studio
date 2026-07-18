@@ -22,6 +22,7 @@ from studio.stages import publish as publish_stage
 from studio.stages import save as save_stage
 from studio.stages import script as script_stage
 from studio.stages import stitch as stitch_stage
+from studio.stages import storyboard as storyboard_stage
 from studio.stages import visuals as visuals_stage
 from studio.stages import voice as voice_stage
 
@@ -59,6 +60,117 @@ def init(idea: str, duration: int = 150, aspect: str = "9:16",
     manifest.save(d, m)
     console.print(f"[green]created[/] {rid}")
     return rid
+
+
+# ------------------------------------------------------------------ story-illustrator
+@app.command("characters-build")
+def characters_build(name: str, root: Path = Path("characters"),
+                     provider: str = "gemini", portrait: bool = False,
+                     portrait_provider: str = "fal-nanobanana", style: str = "",
+                     age_shift: int = 0) -> None:
+    """Build (or rebuild) a character card from `<root>/<name>/` reference images.
+
+    Vision pass → locked identity descriptor + the cleanest anchor image, written to
+    card.json. --portrait additionally renders ONE neutral master portrait from the
+    best reference (in --style) and makes it the sole anchor — the strongest
+    anti-drift setup for a character reused across many scenes/videos."""
+    from studio import characters as chars
+    card = chars.build_card(root, name, provider=provider,
+                            portrait_provider=portrait_provider if portrait else "",
+                            style=style, age_shift=age_shift)
+    console.print(f"[green]card[/] {chars.card_path(root, name)}")
+    console.print(f"  anchor: {', '.join(card.canonical_refs)}  ({card.note})")
+    console.print(f"  descriptor: {card.descriptor[:160]}")
+
+
+@app.command("book-split")
+def book_split(book_file: Path, pattern: str = r"^\s*(Глава|ГЛАВА|Chapter|CHAPTER|Часть)\s+\d+\s*$",
+               out_dir: Optional[Path] = None, clean: bool = True) -> None:
+    """Split a whole book (plain text) into per-chapter files for one-by-one publishing.
+
+    PDF page furniture is stripped first (--no-clean to skip): form feeds, standalone
+    page numbers, the per-page running head/footer, decorative separator lines, and
+    hyphenated line breaks — narration must never read a page number aloud.
+
+    Heading lines must match --pattern on a line of their own (table-of-contents lines
+    with dot leaders are ignored automatically). Writes chNN.txt + index.json next to
+    the book (or into --out-dir). Feed each chapter to `studio storyboard`."""
+    import json as _json
+    text = book_file.read_text()
+    if clean:
+        from studio.textclean import clean_pdf_text
+        text = clean_pdf_text(text)
+    rx = re.compile(pattern)
+    lines = text.splitlines()
+    marks = [i for i, ln in enumerate(lines) if rx.match(ln.strip())]
+    if not marks:
+        console.print(f"[red]no headings matched[/] {pattern}")
+        raise typer.Exit(1)
+    out = out_dir or book_file.parent
+    out.mkdir(parents=True, exist_ok=True)
+    index = []
+    bounds = marks + [len(lines)]
+    for n, (a, b) in enumerate(zip(marks, bounds[1:]), 1):
+        body = "\n".join(lines[a:b]).strip()
+        f = out / f"ch{n:02d}.txt"
+        f.write_text(body)
+        index.append({"n": n, "title": lines[a].strip(), "file": f.name,
+                      "chars": len(body)})
+    (out / "index.json").write_text(_json.dumps(index, ensure_ascii=False, indent=1))
+    console.print(f"[green]split[/] {len(index)} chapters -> {out}/ch01..ch{len(index):02d}.txt")
+
+
+@app.command("characters-extract")
+def characters_extract(name: str, story_file: Path, root: Path = Path("characters"),
+                       provider: str = "gemini", age_shift: int = 0) -> None:
+    """Build a TEXT-DERIVED card for a character with no reference images.
+
+    Analyzes the WHOLE story once, extracts every physical characteristic the prose
+    gives, invents committed era-consistent specifics for the gaps, and locks the
+    result in card.json — so the character keeps one constant shape across every
+    scene instead of being re-imagined per image. (Storyboard --discover does this
+    automatically for unknown recurring characters.)"""
+    from studio import characters as chars
+    card = chars.build_card_from_text(root, name, story_file.read_text(), provider=provider,
+                                      age_shift=age_shift)
+    console.print(f"[green]card[/] {chars.card_path(root, name)}  ({card.note})")
+    console.print(f"  descriptor: {card.descriptor[:200]}")
+
+
+@app.command()
+def storyboard(story_file: Path, run_id: Optional[str] = None, duration: int = 600,
+               aspect: str = "16:9", style: str = "", provider: Optional[str] = None,
+               characters_root: Path = Path("characters"),
+               voice_name: str = "narrator", tone: str = "neutral",
+               tier: str = "balanced", discover: bool = True) -> None:
+    """Story mode — segment EXISTING prose (story/audiobook text) into a scene script.
+
+    Creates the run + writes 01_script.json with `characters:[...]`-tagged beats from
+    the cards under --characters-root. Recurring characters WITHOUT a card get a
+    text-derived one automatically (whole-story analysis → locked descriptor;
+    --no-discover skips). Continue with the normal pipeline, passing the
+    same root to visuals:
+
+        studio visuals <run_id> --characters-root characters/
+        studio narrate <run_id> && studio clips <run_id> ... (or `studio run` per stage)
+    """
+    story = story_file.read_text()
+    rid = run_id or f"{datetime.now():%Y%m%d_%H%M%S}_{_slug(story_file.stem)}"
+    d = paths.run_dir(rid)
+    d.mkdir(parents=True, exist_ok=True)
+    m = manifest.Manifest(id=rid, idea=f"storyboard:{story_file.name}",
+                          duration_s=duration, aspect=aspect, voice=True, style=style,
+                          tier=tier)
+    prov = provider or config.default_provider("script")
+    script, latency = storyboard_stage.run(d, story, duration, aspect, style, prov,
+                                           voice_name=voice_name, tone=tone,
+                                           roster_root=characters_root, discover=discover)
+    m.record("script", done=True, provider=f"storyboard:{prov}", latency_s=latency,
+             note=f"{len(script.scenes)} beats from {story_file.name}")
+    manifest.save(d, m)
+    tagged = sum(1 for s in script.scenes if s.characters)
+    console.print(f"[green]storyboard[/] {rid}: {len(script.scenes)} beats "
+                  f"({tagged} with characters)")
 
 
 # ----------------------------------------------------------------------- per-stage
@@ -164,7 +276,8 @@ def _script_with_critic(rid: str, sp: str, mode: str, retries: int,
 def visuals(run_id: str, provider: Optional[str] = None,
             cheap_provider: Optional[str] = None,
             char_ref: Optional[Path] = None, force: bool = False,
-            parallax_plates: bool = False, parallax_fg: bool = False) -> None:
+            parallax_plates: bool = False, parallax_fg: bool = False,
+            characters_root: Optional[Path] = None, verify_chars: bool = True) -> None:
     """Stage 2 — keyframe image per scene. Scenes with image_role="bg" use
     --cheap-provider (cheaper model for backgrounds/overlays); hero/character use
     --provider (quality + character ref).
@@ -173,12 +286,17 @@ def visuals(run_id: str, provider: Optional[str] = None,
     each animator:"parallax" scene → true layered 2.5D (no torn frame). +1 image/scene.
     --parallax-fg: also generate a separate FOREGROUND plate (subject on a flat bg, keyed
     to transparency) for a cleaner cutout than rembg-ing the busy still (Route 1).
-    +1 image/scene; pair with --parallax-plates for fully purpose-built layers."""
+    +1 image/scene; pair with --parallax-plates for fully purpose-built layers.
+
+    --characters-root characters/: scenes tagged `characters:[...]` use each named
+    card's canonical anchor image(s) + locked descriptor (story-illustrator mode);
+    --no-verify-chars skips the per-scene vision drift check."""
     d, m = _load(run_id)
     prov = provider or config.default_provider("visuals")
     cheap = cheap_provider or config.default_provider("visuals_cheap")
     r = visuals_stage.run(d, prov, char_ref=char_ref, force=force, cheap_provider=cheap,
-                          parallax_plates=parallax_plates, parallax_fg=parallax_fg)
+                          parallax_plates=parallax_plates, parallax_fg=parallax_fg,
+                          characters_root=characters_root, verify_chars=verify_chars)
     m.record("visuals", done=True, provider=prov, cost_usd=r.cost_usd, latency_s=r.latency_s,
              note=r.note)
     manifest.save(d, m)
@@ -194,7 +312,7 @@ def _parse_ids(spec: str | None) -> set[int] | None:
 
 @app.command()
 def narrate(run_id: str, provider: Optional[str] = None, voice: str = "",
-            tone: str = "") -> None:
+            tone: str = "", continuous: bool = False) -> None:
     """Pre-clips TTS: synth each scene, derive clip durations + aligned captions.
 
     --voice man|woman|cartoon|narrator  --tone neutral|serious|mystical|friendly|sad|excited
@@ -202,7 +320,7 @@ def narrate(run_id: str, provider: Optional[str] = None, voice: str = "",
     """
     d, m = _load(run_id)
     prov = provider or config.default_provider("voice")
-    r = narrate_stage.run(d, prov, voice_name=voice, tone=tone)
+    r = narrate_stage.run(d, prov, voice_name=voice, tone=tone, continuous=continuous)
     m.record("narrate", done=True, provider=prov, cost_usd=r.cost_usd,
              latency_s=r.latency_s, note=r.note)
     manifest.save(d, m)
@@ -1000,6 +1118,13 @@ def m_measure(channel: str = "", comments_n: int = 60, force: bool = False) -> N
         m.subs_gained = analytics.subs_gained(e.video_id, channel)
         mscore.derive(m)
         e.metrics = m
+        # append an age-bucketed snapshot so metrics form a time series (3d→7d→30d
+        # growth curves, age-normalized velocity) instead of one overwritten number.
+        # Re-measuring inside the same bucket replaces that bucket's snapshot.
+        bucket = min((("1d", 1), ("3d", 3), ("7d", 7), ("14d", 14), ("30d", 30)),
+                     key=lambda b: abs(st["age_days"] - b[1]))[0]
+        snap = mj.MetricSnapshot(**m.model_dump(), bucket=bucket)
+        e.snapshots = [s for s in e.snapshots if s.bucket != bucket] + [snap]
         e.published_at = e.published_at or st["published_at"]
         e.virality = mscore.virality(m)
         e.status = "measured"

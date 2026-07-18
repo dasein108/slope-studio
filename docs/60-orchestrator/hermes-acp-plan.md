@@ -1,6 +1,8 @@
 # Hermes Orchestrator + ACP Interface — Integration Plan
 
-**Status:** proposal · **Date:** 2026-06-05 · **Scope:** wire NousResearch **Hermes** in as the agentic orchestrator brain, expose **all 12 memory layers** to it as tools, and front the whole thing over **Zed's Agent Client Protocol (ACP)** so the studio drops into an editor's agent panel.
+> **⚠️ Superseded (2026-07).** This Hermes+ACP orchestrator was a *proposal* and was **not implemented**. The orchestrator role was instead filled by **[Paperclip](https://paperclip.ing)** — an agent-company runtime that runs the channel as eight role-specialized Claude Code agents coordinating over tickets, on a local daemon + embedded Postgres. Write-ups: *Zero to Autopilot* [Part 8 — The $25 Company](https://dev.to/dasein108/zero-to-autopilot-part-8-the-25-company-an-org-of-ai-agents-that-runs-my-channel-1k9) (the story) and Part 9 — *Anatomy of a $25 AI Company* (the internals). Kept for the design rationale (memory-as-tools, the `loop.py` seam) that still informs any orchestrator brain.
+
+**Status:** proposal (superseded — see banner) · **Date:** 2026-06-05 · **Scope:** wire NousResearch **Hermes** in as the agentic orchestrator brain, expose **all 12 memory layers** to it as tools, and front the whole thing over **Zed's Agent Client Protocol (ACP)** so the studio drops into an editor's agent panel.
 
 This is the architecture rationale doc; per `CLAUDE.md` keep deep design here and link, don't inline elsewhere.
 

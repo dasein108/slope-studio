@@ -1,0 +1,55 @@
+{
+  "name": "PARADOX NOIR",
+  "slogan": "WHERE MATH GETS DARK",
+  "slug": "paradox-noir",
+  "style": "painterly anime-noir, deep obsidian black background, dark muted desaturated palette, cinematic chiaroscuro, restrained cool teal and dim gold accents used sparingly, manga-inspired ink lines, moody and elegant, subtle low-key lighting, NOT neon, no cyberpunk, no vaporwave, no garish saturated colors, no mad-scientist caricature, no text, no letters, no watermark",
+  "logo_prompt": "A minimalist flat vector EMBLEM: a broken infinity symbol with a single crack fracture point, glowing neon cyan energy leaking from the break, enclosed in a thin circular badge ring, simple bold geometric lines, iconic and readable at small size, centered on a plain solid flat light-grey background, sticker style, flat design.",
+  "profile_prompt": "A circular channel-avatar badge: the same broken infinity symbol with neon cyan crack-glow, deep black background filling the whole square frame, thin circular border ring in gold-amber, bold and centered, instantly readable even when tiny, anime-noir style.",
+  "banner_prompt": "cinematic ultra-wide 16:9 composition. A lone mathematician silhouette seen from behind, seated at a vast dark desk covered in handwritten proofs and equations glowing neon cyan, tall gothic windows behind reveal an infinite starless void, floating mathematical symbols drift like embers, deep obsidian atmosphere, amber-gold candle light on the left edge, cyan equation glow on the right edge. Wide empty darker negative space across the CENTER of the frame for a title, detail pushed to the left and right edges, atmospheric, mystery, elegance.",
+  "palette": {
+    "primary": [
+      6,
+      7,
+      16
+    ],
+    "accent": [
+      0,
+      210,
+      195
+    ],
+    "highlight": [
+      215,
+      170,
+      55
+    ],
+    "text": [
+      245,
+      248,
+      255
+    ]
+  },
+  "keywords": [
+    "math paradox",
+    "mathematics mystery",
+    "paradox explained",
+    "impossible math",
+    "tragic genius",
+    "math history",
+    "physics paradox",
+    "mathematical proof",
+    "unsolved problems",
+    "quantum paradox",
+    "forbidden knowledge",
+    "math shorts",
+    "science mystery",
+    "mathematical impossibility",
+    "genius mathematician",
+    "infinity paradox",
+    "logic paradox",
+    "math facts",
+    "beautiful math",
+    "dark science"
+  ],
+  "description": "PARADOX NOIR — where math gets dark.\n\nEvery video is a short journey into the strangest, most forbidden corners of mathematics and physics — the proofs that broke reality, the geniuses who were proven right only after death, the paradoxes that shattered what we thought we knew.\n\nMath. Mystery. Legend.\n\nNew drops regularly. Subscribe if you're not afraid of the infinite.\n\n#mathparadox #paradox #mathematics #geniusmathematician #mathhistory #physicsparadox #impossiblemath #quantumparadox",
+  "_style_prev": "anime-noir aesthetic, deep obsidian black background, neon cyan and electric teal glow, muted gold-amber accent, cinematic shadow and light, manga-inspired ink lines, high contrast, mysterious and elegant, no text, no letters, no words, no watermark"
+}
