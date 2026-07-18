@@ -52,9 +52,52 @@ def _key_foreground(path: Path) -> bool:
         return False
 
 
+def _scene_char_setup(scene, roster: dict, char_root: Path) -> tuple[str, list[Path]]:
+    """Identity preamble + ordered anchor refs for a character-tagged scene.
+    Pure function (unit-tested): cards are looked up by scene.characters, capped at
+    the model's reference limit, and the SAME canonical anchors are returned for
+    every scene — anchor stability is the anti-drift contract."""
+    from studio import characters as chars
+    cards, ref_cards, refs = [], [], []
+    for name in scene.characters[:chars.MAX_SCENE_REFS]:
+        card = roster.get(name)
+        if not card:
+            continue
+        cards.append(card)
+        anchors = chars.anchor_refs(card, char_root)
+        if anchors:
+            ref_cards.append(card)
+            refs.append(anchors[0])   # exactly one anchor per character, always the same
+        # no anchors → text-derived card: locked descriptor IS the anchor
+    if not cards:
+        return "", []
+    return chars.scene_identity_block(cards, with_refs=ref_cards), refs
+
+
+def _verify_character(img: Path, cards: list) -> str:
+    """Drift gate: vision-check the rendered frame against each card's locked
+    descriptor. Returns "" when consistent, else concrete fix notes for ONE retry.
+    Any failure (no key, bad JSON) returns "" — the gate never blocks offline runs."""
+    import json as _json
+    try:
+        from studio.providers import llm
+        want = "; ".join(f"{c.name}: {c.descriptor}" for c in cards if c.descriptor)
+        if not want:
+            return ""
+        d = _json.loads(llm.vision_json(
+            img,
+            "You verify character consistency between an illustration and locked descriptors.",
+            f"Expected characters: {want}\nDoes each match the figure(s) in the image? "
+            'Respond ONLY JSON: {"match": true|false, "fixes": "<what to correct, or empty>"}'))
+        return "" if d.get("match", True) else str(d.get("fixes", ""))[:300]
+    except Exception:
+        return ""
+
+
 def run(run_dir: Path, provider: str, char_ref: Path | None = None,
         force: bool = False, cheap_provider: str = "", parallax_plates: bool = False,
-        parallax_fg: bool = False) -> GenResult:
+        parallax_fg: bool = False, characters_root: Path | None = None,
+        verify_chars: bool = True) -> GenResult:
     """Generate one keyframe per scene. With `cheap_provider`, scenes flagged
     `image_role="bg"` (backgrounds/overlays) use the cheaper model, while
     `hero`/default scenes (character/main person) use the quality `provider` — and
@@ -67,27 +110,60 @@ def run(run_dir: Path, provider: str, char_ref: Path | None = None,
     canvas.set_from_aspect(script.aspect)
     paths.visuals_dir(run_dir).mkdir(parents=True, exist_ok=True)
     refs = [char_ref] if char_ref else None
+    ch_roster: dict = {}
+    if characters_root and any(s.characters for s in script.scenes):
+        from studio import characters as chars
+        ch_roster = chars.roster(characters_root)
 
     total_cost, total_latency = 0.0, 0.0
     counts: dict[str, int] = {}
     for idx, scene in enumerate(script.scenes):
         dst = paths.scene_image(run_dir, scene.id)
-        # backgrounds/overlays → cheap model (no char ref); else quality + ref.
-        if scene.image_role == "bg" and cheap_provider:
+        # character-tagged scenes → quality model + that scene's card anchors;
+        # backgrounds/overlays → cheap model (no char ref); else quality + global ref.
+        identity, ch_refs = ("", [])
+        if scene.characters and ch_roster:
+            identity, ch_refs = _scene_char_setup(scene, ch_roster, characters_root)
+        if identity:
+            # never the cheap model for a character scene — even a text-only identity
+            # needs the reference-capable model to hold a constant look
+            prov, use_refs = provider, (ch_refs or None)
+        elif scene.image_role == "bg" and cheap_provider:
             prov, use_refs = cheap_provider, None
         else:
             prov, use_refs = provider, refs
         # reinforce consistency: prepend the reusable character string.
         # strip any leaked aspect-ratio token so prompt-literal models don't render it.
         prompt = _strip_aspect_token(scene.visual_prompt)
-        if script.character and script.character not in prompt:
+        if identity:
+            prompt = f"{identity} Scene: {prompt}"
+        elif script.character and script.character not in prompt:
             prompt = f"{script.character}. {prompt}"
+        if characters_root is not None and not scene.on_screen_text:
+            # the model sometimes renders the prompt itself as a garbled overlay
+            # caption. Ban OVERLAYS only — text that belongs to objects in the
+            # scene (newspaper headlines, shop signs, a chalkboard) is welcome.
+            prompt += (" No overlay text: no captions, subtitles, watermarks, or "
+                       "floating labels. Text printed on objects inside the scene "
+                       "(newspapers, signs, books) is fine.")
         if not (dst.exists() and not force):
             res = image.generate(prov, prompt, dst, refs=use_refs, aspect=script.aspect,
                                  headline=scene.on_screen_text, index=idx)
             total_cost += res.cost_usd
             total_latency += res.latency_s
             counts[prov] = counts.get(prov, 0) + 1
+            # drift gate: one vision check + at most one corrected regeneration
+            # (text-derived identities are verified too — the descriptor is checkable)
+            if identity and verify_chars:
+                fixes = _verify_character(dst, [ch_roster[n] for n in scene.characters
+                                                if n in ch_roster])
+                if fixes:
+                    res = image.generate(prov, f"{prompt} CORRECTIONS: {fixes}", dst,
+                                         refs=use_refs, aspect=script.aspect,
+                                         headline=scene.on_screen_text, index=idx)
+                    total_cost += res.cost_usd
+                    total_latency += res.latency_s
+                    counts[f"{prov}+retry"] = counts.get(f"{prov}+retry", 0) + 1
         is_parallax = (scene.animator or "").strip() == "parallax"
         # layered-parallax background plate (subject removed) — balanced+ only.
         if parallax_plates and is_parallax:

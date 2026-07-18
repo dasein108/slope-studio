@@ -35,6 +35,7 @@ class Scene(BaseModel):
     motion_hint: str = ""
     priority: int = 0  # higher = more worth spending AI-video budget on (0 = auto-heuristic)
     image_role: str = ""  # "hero" (character/main person → quality model) | "bg" (background/overlay → cheap model) | "" (stage default)
+    characters: list[str] = Field(default_factory=list)  # character-card names in this scene (characters/<name>/card.json); anchors+locked descriptor injected at visuals time
     # --- presentation (free, context-driven; see docs/30-animation/) ---
     transition: str = ""        # transition INTO this scene: cut|fade|wipeleft|... (docs/30-animation/transitions.md)
     transition_dur: float = 0.0  # seconds for the transition (0 -> pipeline default)
@@ -49,11 +50,13 @@ class Scene(BaseModel):
     limbs: list[Limb] = Field(default_factory=list)  # animator=puppet: per-limb joint rotation (hand up/wave); effects/puppet.md
     sfx: list[SoundCue] = Field(default_factory=list)  # sound effects to lay over this scene
 
-    @field_validator("fx", "mouth_xy", "limbs", "sfx", mode="before")
+    @field_validator("fx", "mouth_xy", "limbs", "sfx", "characters", mode="before")
     @classmethod
     def _empty_string_as_empty_list(cls, value):
         if value == "":
             return []
+        if isinstance(value, dict):   # LLMs sometimes emit a single object for a 1-item list
+            return [value]
         return value
 
     @property
