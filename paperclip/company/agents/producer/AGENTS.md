@@ -74,6 +74,22 @@ heartbeat. Block on it. Only after publish returns:
 If an upload genuinely cannot finish inside one heartbeat, set the issue
 `blocked` and escalate — do not background it and exit.
 
+## Upload Failed? CHECK THE CHANNEL BEFORE ANY RETRY
+
+A resumable upload that dies with `RemoteDisconnected` / `SSLEOFError` on the final
+chunk usually **completed server-side** — only the response was lost. A blind retry
+publishes a duplicate.
+
+After ANY failed `studio publish`:
+
+1. FIRST check whether the video already exists on the channel: fetch the channel
+   shorts/videos tab and grep for the exact title, or oEmbed a suspected video id
+   (`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=<id>` —
+   HTTP 200 = live).
+2. If it landed: do NOT re-upload. Link that video id to the journal entry and set
+   the issue `done`.
+3. Only if it verifiably did not land: retry ONCE, then `blocked` with the error.
+
 ## Never Leave Work Hanging
 
 Never end a heartbeat with a task you checked out still `in_progress`. Before
