@@ -88,3 +88,8 @@ stories/*
 !stories/README.md
 characters/*
 !characters/README.md
+
+# --- Guerrilla marketing: tooling is public; only YOUR box + results stay local ---
+scripts/remote/guerrilla.local.mk
+runs/_guerrilla_remote/
+docs/local/

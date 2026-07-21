@@ -1,0 +1,12 @@
+# Copy this file to guerrilla.local.mk (gitignored) and fill in your own values.
+# guerrilla.mk includes it automatically. Your VPS host and key never enter git.
+
+REMOTE_USER := root
+REMOTE_HOST := 203.0.113.10          # your VPS with clean, unrestricted access to YouTube
+SSH_KEY     := ~/.ssh/your_deploy_key
+REMOTE_DIR  := /opt/slope-studio-guerrilla
+
+# Optional overrides:
+# CHANNEL     := pilot-channel        # which token_<channel>.json to deploy + post from
+# TARGET      := 10
+# PER_CHANNEL := 4

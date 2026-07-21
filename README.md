@@ -206,6 +206,12 @@ Everything is one `studio` Typer app. `studio --help` (or `studio <cmd> --help`)
 | `tick` | run the **one** action the loop engine says is due (cron-friendly) |
 | `autopilot` | run the loop for a session (handles the 48–72h measurement wait) |
 
+**Guerrilla marketing** (`studio guerrilla <cmd> --channel <name>`):
+
+| Command | What it does |
+|---------|--------------|
+| `studio guerrilla` | targeted commenting for indirect reach (see [`docs/guerrilla-marketing.md`](docs/guerrilla-marketing.md)) |
+
 **Make targets** (dev/ops helpers):
 
 | Target | What it does |

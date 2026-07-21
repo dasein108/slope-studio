@@ -1,6 +1,6 @@
 [project]
 name = "slope-studio"
-version = "0.2.0"
+version = "0.3.0"
 description = "Automated short-video studio: idea -> published Short. Faceless MVP."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,6 +19,7 @@ fal = ["fal-client>=0.5"]
 youtube = ["google-api-python-client>=2.130", "google-auth-oauthlib>=1.2"]
 parallax = ["rembg>=2.0", "onnxruntime>=1.17"]   # animator=parallax (2.5D depth)
 manim = ["manim>=0.18"]                           # animator=manim (vector animation)
+guerrilla = ["youtube-transcript-api>=1.0.0"]     # guerrilla transcript grounding
 dev = ["ruff>=0.5", "pytest>=8.0"]
 
 [project.scripts]

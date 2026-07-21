@@ -33,6 +33,13 @@ marketing_app = typer.Typer(add_completion=False,
                             help="marketing-guru — viral growth loop (ideate→deploy→measure→learn).")
 app.add_typer(marketing_app, name="marketing")
 
+guerrilla_app = typer.Typer(add_completion=False,
+                            help="guerrilla-marketing — targeted commenting for indirect reach.")
+app.add_typer(guerrilla_app, name="guerrilla")
+
+watchlist_app = typer.Typer(add_completion=False, help="Manage target channels.")
+guerrilla_app.add_typer(watchlist_app, name="watchlist")
+
 STAGE_ORDER = ["script", "visuals", "narrate", "clips", "stitch", "audio", "voice", "save"]
 
 
@@ -1389,6 +1396,255 @@ def _marketing_table(j) -> None:
                   "-" if e.percentile is None else f"{e.percentile:.0f}",
                   e.outcome or "-")
     console.print(t)
+
+
+# ======================================================= guerrilla-marketing loop
+
+def _guerrilla_published_timestamps(channel: str) -> list[str]:
+    """Raw `published_at` ISO timestamps from the marketing journal, one per bet that has
+    shipped a video. Shared by `rollup` (which needs `YYYY-MM-DD` day strings) and `approve`
+    (which needs full timestamps for the publish-blackout check) so the journal-loading logic
+    lives in exactly one place."""
+    from studio.marketing import journal as mj
+
+    return [e.published_at for e in mj.load(channel).entries if getattr(e, "published_at", "")]
+
+
+@watchlist_app.command("add")
+def guerrilla_watchlist_add(
+    channel_id: str = typer.Argument(..., help="Target YouTube channel id (UC...)"),
+    channel: str = typer.Option(..., "--channel", help="Our channel token"),
+    title: str = typer.Option("", "--title"),
+    median_views: int = typer.Option(0, "--median-views"),
+    topic_tags: str = typer.Option("", "--tags"),
+):
+    """Add a target channel to the watchlist."""
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import watchlist as gwl
+
+    conn = gdb.connect(channel)
+    gwl.add(conn, channel_id, title=title, median_views=median_views,
+            topic_tags=topic_tags, added_by="manual")
+    console.print(f"[green]added[/] {channel_id} to {channel} watchlist")
+
+
+@watchlist_app.command("list")
+def guerrilla_watchlist_list(
+    channel: str = typer.Option(..., "--channel"),
+    show_all: bool = typer.Option(False, "--all",
+                                  help="Include paused/banned/rejected channels."),
+):
+    """List target channels (active only, unless --all)."""
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import watchlist as gwl
+
+    conn = gdb.connect(channel)
+    rows = gwl.all_channels(conn) if show_all else gwl.active(conn)
+    if not rows:
+        console.print("[dim](watchlist empty — guerrilla watchlist add <UC...>)[/]")
+        return
+    for r in rows:
+        status_tag = "" if r["status"] == "active" else f"  [yellow]\\[{r['status']}][/]"
+        console.print(f"{r['channel_id']}  {r['title'] or '(untitled)'}  "
+                      f"median_views={r['median_views']}  last={r['last_commented_at'] or '-'}"
+                      f"{status_tag}")
+
+
+@watchlist_app.command("resume")
+def guerrilla_watchlist_resume(
+    channel_id: str = typer.Argument(..., help="Target YouTube channel id (UC...) to un-pause"),
+    channel: str = typer.Option(..., "--channel", help="Our channel token"),
+):
+    """Un-pause a watchlist channel — e.g. after a transient discovery error paused
+    it, or after confirming a channel that looked gone is actually back."""
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import watchlist as gwl
+
+    conn = gdb.connect(channel)
+    gwl.set_status(conn, channel_id, "active")
+    console.print(f"[green]resumed[/] {channel_id}")
+
+
+@guerrilla_app.command("tick")
+def guerrilla_tick(
+    channel: str = typer.Option(..., "--channel"),
+    daily_cap: int = typer.Option(12, "--cap", min=10, max=25),
+    dry_run: bool = typer.Option(False, "--dry-run",
+                                 help="Do everything except post. Read the output first."),
+    provider: str = typer.Option("", "--provider"),
+    experiment_start: str = typer.Option(
+        "", "--experiment-start",
+        help="YYYY-MM-DD. Enables switchback gating (tick suppressed on OFF days). "
+             "Omit to run every tick regardless of the switchback calendar."),
+    cite_timestamps: bool = typer.Option(
+        False, "--cite-timestamps",
+        help="Opt-in: let posted comments cite a video timestamp. Off by default — "
+             "the highlight stage's timestamps are unreliable and the citation phrasing "
+             "is bot-detectable; the composed comment still reacts to the found moment "
+             "either way, it just won't name a time."),
+    max_age_min: float = typer.Option(
+        90.0, "--max-age-min",
+        help="Only comment on videos younger than this many minutes (default 90 — early "
+             "enough to hold a top slot). Raise (e.g. 1440 for 24h) to widen the pool; the "
+             "max-comments gate still skips videos that have grown crowded."),
+):
+    """Run one discover -> rank -> transcript -> classify -> highlight -> compose -> gate -> post cycle."""
+    from datetime import date as _date
+    from datetime import datetime, timezone
+
+    from studio.guerrilla import client as gclient
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import loop as gloop
+    from studio.guerrilla import rank as grank
+
+    conn = gdb.connect(channel)
+    cfg = gloop.Config(
+        daily_cap=daily_cap,
+        dry_run=dry_run,
+        provider=provider,
+        gates=grank.Gates(max_age_min=max_age_min),
+        # Same helper `approve` uses for the blackout check — without this, `in_blackout`
+        # is always evaluated against an empty list and the rail is a no-op.
+        publish_times=_guerrilla_published_timestamps(channel),
+        experiment_start=_date.fromisoformat(experiment_start) if experiment_start else None,
+        # Only spent lazily, inside `post.post_comment`'s ghost-post read-back,
+        # to resolve our own channel id (`channel_info`) — never on a normal tick.
+        channel=channel,
+        cite_timestamps=cite_timestamps,
+    )
+    res = gloop.tick(conn, gclient.build(channel), cfg, datetime.now(timezone.utc))
+    if res.paused:
+        console.print("[red]PAUSED[/] — circuit breaker tripped, see the Telegram alert")
+        raise typer.Exit(1)
+    if dry_run and res.proposed:
+        console.print(f"[bold]{len(res.proposed)} comment(s) would post — read every one:[/]\n")
+        for p in res.proposed:
+            console.print(f"[dim]{p['video_id']}[/]  [bold]{p['title']}[/]  "
+                          f"[cyan]{p['style_tag']}[/]  [dim]score={p['score']}[/]")
+            console.print(f"  [green]“{p['text']}”[/]\n")
+    console.print(f"discovered={res.discovered} considered={res.considered} "
+                  f"posted={res.posted} queued={res.queued}")
+    if res.skipped:
+        console.print(f"[dim]skipped: {dict(res.skipped)}[/]")
+    if res.blocked:
+        console.print(f"[dim]blocked: {dict(res.blocked)}[/]")
+
+
+@guerrilla_app.command("track")
+def guerrilla_track(channel: str = typer.Option(..., "--channel")):
+    """Refresh likes/replies/survival for recent comments; check the breaker."""
+    from studio.guerrilla import client as gclient
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import track as gtrack
+
+    conn = gdb.connect(channel)
+    n = gtrack.refresh(conn, gclient.build(channel))
+    rate = gtrack.survival_rate(conn)
+    console.print(f"checked {n} comments — survival {rate:.1%}")
+    if gtrack.check_breaker(conn):
+        console.print("[red]breaker tripped — loop should stay paused[/]")
+        raise typer.Exit(1)
+
+
+@guerrilla_app.command("resume")
+def guerrilla_resume(channel: str = typer.Option(..., "--channel")):
+    """Clear a tripped circuit breaker. Manual by design — only run this after
+    investigating the possible shadowban that tripped it."""
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import track as gtrack
+
+    conn = gdb.connect(channel)
+    gtrack.resume(conn)
+    console.print("[green]breaker cleared[/] — tick and approve will resume posting")
+
+
+@guerrilla_app.command("report")
+def guerrilla_report(channel: str = typer.Option(..., "--channel"),
+                     write: bool = typer.Option(False, "--write")):
+    """Effectiveness by style tag, skip reasons, and the switchback readout."""
+    from studio import paths
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import report as greport
+
+    conn = gdb.connect(channel)
+    md = greport.render(conn)
+    console.print(md)
+    if write:
+        out = paths.guerrilla_dir(channel) / "report.md"
+        out.write_text(md)
+        console.print(f"[green]wrote[/] {out}")
+
+
+@guerrilla_app.command("rollup")
+def guerrilla_rollup(
+    channel: str = typer.Option(..., "--channel"),
+    channel_id: str = typer.Option(..., "--channel-id", help="Our own UC... id"),
+    start: str = typer.Option(..., "--start", help="YYYY-MM-DD"),
+    end: str = typer.Option(..., "--end", help="YYYY-MM-DD"),
+    experiment_start: str = typer.Option(..., "--experiment-start", help="YYYY-MM-DD"),
+):
+    """Pull daily subs/views into channel_daily so the switchback can be read."""
+    from datetime import date as _date
+
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import rollup as grollup
+
+    conn = gdb.connect(channel)
+    published = {ts[:10] for ts in _guerrilla_published_timestamps(channel)}
+    n = grollup.run(conn, grollup.build(channel), channel_id,
+                    _date.fromisoformat(start), _date.fromisoformat(end),
+                    _date.fromisoformat(experiment_start), published)
+    console.print(f"[green]wrote[/] {n} days into channel_daily")
+
+
+@guerrilla_app.command("queue")
+def guerrilla_queue(channel: str = typer.Option(..., "--channel")):
+    """Comments awaiting your approval."""
+    from studio.guerrilla import db as gdb
+
+    rows = list(gdb.connect(channel).execute(
+        "SELECT video_id, title, skip_reason FROM videos WHERE decision = 'queued'"))
+    if not rows:
+        console.print("[dim](nothing queued)[/]")
+        return
+    for r in rows:
+        console.print(f"[bold]{r['video_id']}[/]  {r['title']}\n  {r['skip_reason']}\n")
+
+
+@guerrilla_app.command("approve")
+def guerrilla_approve(video_id: str = typer.Argument(...),
+                      channel: str = typer.Option(..., "--channel"),
+                      cap: int = typer.Option(12, "--cap", min=10, max=25)):
+    """Post a queued comment."""
+    from datetime import datetime, timezone
+
+    from studio.guerrilla import client as gclient
+    from studio.guerrilla import critic as gcritic
+    from studio.guerrilla import db as gdb
+    from studio.guerrilla import post as gpost
+    from studio.guerrilla import track as gtrack
+
+    conn = gdb.connect(channel)
+    if gtrack.is_tripped(conn):
+        console.print("[red]circuit breaker is tripped[/] — refusing to hand-post through a "
+                      "suspected shadowban. Investigate, then `guerrilla resume` to clear it.")
+        raise typer.Exit(1)
+    row = conn.execute(
+        "SELECT skip_reason FROM videos WHERE video_id = ? AND decision = 'queued'",
+        (video_id,)).fetchone()
+    if not row:
+        console.print(f"[red]{video_id} is not queued[/]")
+        raise typer.Exit(1)
+    verdict = gcritic.Verdict(score=gcritic.QUEUE, breakdown={}, decision="queue")
+    publish_times = _guerrilla_published_timestamps(channel)
+    try:
+        gpost.post_comment(conn, gclient.build(channel), video_id, row["skip_reason"],
+                           "approved", verdict, 0, datetime.now(timezone.utc),
+                           {"daily_cap": cap, "publish_times": publish_times, "channel": channel})
+        console.print("[green]posted[/]")
+    except gpost.PostBlocked as e:
+        console.print(f"[yellow]blocked:[/] {e.reason}")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

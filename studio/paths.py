@@ -16,6 +16,11 @@ def brand_dir(slug: str) -> Path:
     return RUNS_ROOT / "_brand" / slug
 
 
+def guerrilla_dir(channel: str) -> Path:
+    """Guerrilla-marketing state (SQLite db + reports) for one channel."""
+    return RUNS_ROOT / "_guerrilla" / channel
+
+
 def script_json(d: Path) -> Path:
     return d / "01_script.json"
 

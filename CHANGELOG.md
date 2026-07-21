@@ -3,6 +3,46 @@
 All notable changes to Slope Studio are recorded here. Versions follow
 [semantic versioning](https://semver.org/).
 
+## [0.3.0] — 2026-07-21
+
+### Added
+
+- **Guerrilla-marketing mode.** A `studio guerrilla` subsystem that grows a channel
+  indirectly: it posts a small, capped number of on-topic comments per day under other
+  creators' recent videos, so readers who find a comment interesting click through to
+  the commenter's channel. It is gray-hat / ToS-adjacent, so the whole design is built
+  around ban defense and honest measurement.
+  - **Transcript-grounded comments.** The pipeline is
+    `discover → rank → transcript → topic → highlight → compose → critic → rails → post`.
+    Each comment reacts to a specific real moment in the video's transcript rather than
+    paraphrasing the title, which is what makes it specific instead of templated.
+    `studio guerrilla tick` runs one cycle; `--dry-run` prints every comment it would
+    post so a human can read them first.
+  - **Ban-defense rails** enforced at a single posting chokepoint: hard gates (video
+    age, existing-comment count, channel size, 72h per-channel cooldown), a code-level
+    deny-list (links / self-promo / channel names), near-duplicate + repeated-opening +
+    style-diversity checks, an active-hours window, a publish blackout, and minimum
+    jittered spacing between comments.
+  - **Circuit breaker.** `studio guerrilla track` refreshes comment metrics and
+    auto-pauses the loop (with a Telegram alert) if comment survival drops — the leading
+    indicator of a shadowban. `studio guerrilla resume` clears it deliberately.
+  - **Switchback experiment + reporting.** `rollup` populates a daily table and
+    `report` scores effectiveness by comment style and surfaces a switchback verdict on
+    whether the activity moves subscribers at all.
+  - **Watchlist + queue.** `studio guerrilla watchlist add|list` curates target
+    channels; `queue`/`approve` support a human-in-the-loop path where the bot drafts
+    and the operator picks.
+  - **Timestamp citation is opt-in and off by default** (`--cite-timestamps`): the
+    highlight stage's timestamps are unreliable and citing them reads as automated.
+  - **Optional transcript proxy.** Transcript fetching can route through an HTTP proxy
+    via the `TRANSCRIPT_PROXY_URL` env var, for networks/IPs that YouTube rate-limits
+    for caption scraping.
+  - **Remote deploy tooling.** `scripts/remote/guerrilla.mk` deploys the subsystem to a
+    VPS with clean internet access (`deploy` / `preview` / `pull` / `posted` / `shell`);
+    host and key come from a gitignored `guerrilla.local.mk` (copy the `.example`).
+  - Operator skill `guerrilla-marketing` and full docs under
+    `docs/50-marketing/guerrilla/`.
+
 ## [0.2.0] — 2026-07-18
 
 ### Added
