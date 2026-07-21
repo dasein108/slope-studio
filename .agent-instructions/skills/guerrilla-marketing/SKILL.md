@@ -186,28 +186,33 @@ to it and fill in `REMOTE_HOST` / `SSH_KEY`. The tracked `guerrilla.mk` never
 hardcodes a host or key path; it fails fast with a clear error if the local file is
 missing.
 
+**Local is the source of truth.** Every operation is `push (code + secrets + db → server)
+→ exec → pull (db + logs → local)`, so the canonical SQLite db lives on your machine and a
+wiped server self-heals on the next run. Never run a cron *on the server* that mutates the
+db — it would fight the push. Schedule the Makefile targets *locally* instead.
+
 ```bash
-make -f scripts/remote/guerrilla.mk deploy    # rsync code + secrets, install uv + deps
-make -f scripts/remote/guerrilla.mk preview    # run a review batch on the VPS (posts nothing)
-make -f scripts/remote/guerrilla.mk pull       # bring batch.json + the db back locally
-make -f scripts/remote/guerrilla.mk posted     # list every comment actually posted, as YouTube links
-make -f scripts/remote/guerrilla.mk shell      # interactive ssh into the deploy dir
-make -f scripts/remote/guerrilla.mk sync-code  # push only code (no secrets) after a change
+make -f scripts/remote/guerrilla.mk tick       # push → one live cycle → pull the db back
+make -f scripts/remote/guerrilla.mk track      # push → refresh metrics + breaker → pull
+make -f scripts/remote/guerrilla.mk preview     # push → review batch (posts nothing) → pull batch.json
+make -f scripts/remote/guerrilla.mk posted      # list every comment actually posted, as YouTube links
+make -f scripts/remote/guerrilla.mk deploy       # full push + uv sync (no exec)
+make -f scripts/remote/guerrilla.mk shell        # interactive ssh into the deploy dir
 ```
 
-| Target | What it does |
+| Target | What it does (all push-then-pull) |
 |---|---|
-| `deploy` | `sync-code` + `sync-secrets` + `setup` — full push and install |
-| `sync-code` | Push only the `studio` package + preview runner (allow-listed, not the whole repo) |
-| `sync-secrets` | Push `.env`, the channel's OAuth token, `client_secret.json` (locked to `0600`), and the watchlist db |
-| `setup` | Install `uv` if missing, `uv sync --extra guerrilla --extra youtube` |
-| `preview` | Run `scripts/guerrilla_preview.py` on the VPS — the same discover→rails pipeline, `post` is never even imported, so there is no code path to a live post |
-| `pull` | Copy `batch.json` + the db back into `runs/_guerrilla_remote/` locally |
-| `posted` | Query the remote db for every posted comment, printed as direct `youtube.com/watch?v=...&lc=...` links |
-| `shell` | Interactive SSH into the remote deploy directory |
+| `tick` | one discover→…→post cycle on the server, db synced back |
+| `track` | refresh comment metrics + run the circuit breaker |
+| `report` | effectiveness by style tag + the switchback verdict |
+| `resume` | clear a tripped circuit breaker |
+| `preview` | run `scripts/guerrilla_preview.py` (never imports `post`, so no live-post path); pull `batch.json` |
+| `posted` | every posted comment as a direct `youtube.com/watch?v=...&lc=...` link |
+| `deploy` | full `_push` (code + secrets + db + `uv sync`), no exec — first run or forced redeploy |
+| `shell` | interactive SSH into the remote deploy directory |
 
-Overridable vars: `CHANNEL` (which `token_<channel>.json` to deploy and post from),
-`TARGET` / `PER_CHANNEL` (preview batch sizing).
+Overridable vars: `CHANNEL`, `CAP` (daily cap), `MAX_AGE_MIN` (age window), `TARGET` /
+`PER_CHANNEL` (preview sizing).
 
 **Transcripts on a fresh network may need a proxy.** Some IPs — including some
 datacenter/VPS ranges — are rate-limited or blocked by YouTube for caption

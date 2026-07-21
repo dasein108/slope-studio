@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# guerrilla — run the guerrilla comment bot by hand.
+#
+# Local drives, the VPS executes. Every command pushes your local state up,
+# runs on the VPS (which can reach YouTube), and pulls the updated database
+# back — so your machine always stays the source of truth. A wiped VPS heals
+# itself on the next run.
+#
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$here"
+MK="scripts/remote/guerrilla.mk"
+
+usage() {
+  cat <<'HELPTEXT'
+guerrilla — run the comment bot manually (local drives, VPS executes)
+
+Usage:
+  scripts/guerrilla [command] [VAR=value ...]
+
+Commands:
+  tick        Post one comment: discover -> gate -> transcript -> compose -> rails -> post.
+              (this is the default if you pass no command)
+  preview     Generate a review batch and post NOTHING. Read it before trusting a live tick.
+  posted      List every comment you've posted, as clickable YouTube links.
+  track       Refresh comment metrics and run the shadowban circuit breaker.
+  report      Effectiveness by comment style, plus the switchback verdict.
+  resume      Clear a tripped circuit breaker (only after you've investigated).
+  deploy      Force a full re-push (code + secrets + deps) with no posting.
+  shell       Open an interactive SSH session in the VPS deploy directory.
+
+Common overrides (append as VAR=value):
+  CAP=10             daily post cap, 10-25
+  MAX_AGE_MIN=7200   how old a video may be, in minutes (7200 = 5 days)
+  CHANNEL=pilot-channel   which channel token to post from
+
+Examples:
+  scripts/guerrilla                 # post one comment now
+  scripts/guerrilla preview          # see what it WOULD post, safely
+  scripts/guerrilla posted           # what has it posted so far?
+  scripts/guerrilla tick CAP=15      # a tick with a higher cap
+
+First-time setup (once):
+  cp scripts/remote/guerrilla.local.mk.example scripts/remote/guerrilla.local.mk
+  # then edit that file: set REMOTE_HOST and SSH_KEY to your VPS
+  scripts/guerrilla deploy           # push code + deps to the VPS
+HELPTEXT
+}
+
+op="${1:-tick}"
+case "$op" in
+  -h|--help|help|"") usage; exit 0 ;;
+  *) shift ;;
+esac
+
+exec make -f "$MK" "$op" "$@"

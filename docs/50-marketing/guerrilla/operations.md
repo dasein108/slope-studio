@@ -1,10 +1,31 @@
 # Operations
 
-How to run `studio guerrilla` day to day: the full CLI, setting it up as an autonomous cron job,
-tuning the two knobs that matter most, reading the effectiveness report, and — honestly — what
-quality of comment to expect from it. See [`architecture.md`](architecture.md) for why any of
-this works the way it does, and [`deploy.md`](deploy.md) if you're running this from a remote
-VPS rather than locally.
+How to run `studio guerrilla` day to day: the one-command manual runner, the full CLI, scheduling
+options, tuning the two knobs that matter most, reading the effectiveness report, and — honestly —
+what quality of comment to expect from it. See [`architecture.md`](architecture.md) for why any of
+this works the way it does, and [`deploy.md`](deploy.md) if you're running this from a remote VPS
+rather than locally.
+
+## The one command you need
+
+When running against a remote VPS, `scripts/guerrilla` is the single entry point. It drives the
+whole thing from your machine — each command pushes your local state to the VPS, runs there, and
+pulls the updated database back, so **your machine stays the source of truth** (a wiped VPS heals
+itself on the next run).
+
+```bash
+scripts/guerrilla            # post one comment now (a single tick)
+scripts/guerrilla preview     # generate a review batch and post NOTHING — read it first
+scripts/guerrilla posted      # list every comment you've posted, as clickable links
+scripts/guerrilla track       # refresh metrics + run the shadowban circuit breaker
+scripts/guerrilla report      # effectiveness by style + the switchback verdict
+scripts/guerrilla --help      # everything, including CAP= / MAX_AGE_MIN= overrides
+```
+
+First time only: `cp scripts/remote/guerrilla.local.mk.example scripts/remote/guerrilla.local.mk`,
+set your `REMOTE_HOST` + `SSH_KEY` in it, then `scripts/guerrilla deploy`. That's it — after that,
+`scripts/guerrilla` whenever you want a comment posted. The rest of this page is the underlying
+CLI (what `scripts/guerrilla` runs on the VPS) and the details behind each step.
 
 ## Setup
 
@@ -128,22 +149,32 @@ studio guerrilla approve <video_id> --channel <name> [--cap 12]
 tick uses — every rail still applies, including the circuit breaker (it refuses to hand-post
 through a suspected shadowban).
 
-## Autonomous cron setup
+## Autonomous scheduling
 
 There's no built-in daemon — `tick` and `track` are single passes meant to be scheduled
-externally (cron, systemd timer, or your platform's equivalent). A typical setup:
+externally (cron, systemd timer, or your platform's equivalent).
+
+**Local execution** — if the scheduling machine can reach YouTube, schedule the CLI directly:
 
 ```cron
-# tick every ~30 min during the pipeline's own active window (09:00-23:00 UTC is enforced
-# by the rails regardless, so scheduling outside it just wastes a cron invocation)
 */30 9-22 * * * cd <deploy-dir> && uv run --extra guerrilla --extra youtube \
-  studio guerrilla tick --channel <name> --cap 12 --max-age-min 1440 \
-  >> logs/guerrilla-tick.log 2>&1
-
-# track twice a day — this is what actually runs the circuit breaker
-0 6,18 * * *  cd <deploy-dir> && uv run --extra guerrilla --extra youtube \
-  studio guerrilla track --channel <name> >> logs/guerrilla-track.log 2>&1
+  studio guerrilla tick --channel <name> --cap 10 --max-age-min 1440 >> logs/tick.log 2>&1
+0 6,18 * * * cd <deploy-dir> && uv run --extra guerrilla --extra youtube \
+  studio guerrilla track --channel <name> >> logs/track.log 2>&1
 ```
+
+**Remote execution (VPS)** — when YouTube is only reachable from a remote box, drive it with the
+sync-wrapped Makefile so **your local machine stays the source of truth for the database**.
+Schedule the *Makefile targets locally*; each pushes state up, execs on the VPS, and pulls the
+mutated db + logs back (see [`deploy.md`](deploy.md)):
+
+```cron
+*/35 9-22 * * * cd <repo> && make -f scripts/remote/guerrilla.mk tick  >> ~/guerrilla-tick.log 2>&1
+0 6,18 * * *   cd <repo> && make -f scripts/remote/guerrilla.mk track >> ~/guerrilla-track.log 2>&1
+```
+
+⚠️ Do **not** also run a cron *on the VPS* that mutates the db — it would fight the push, and the
+next local operation would overwrite its work. Pick one scheduler; let local own the state.
 
 Notes:
 

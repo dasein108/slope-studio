@@ -3,6 +3,23 @@
 All notable changes to Slope Studio are recorded here. Versions follow
 [semantic versioning](https://semver.org/).
 
+## [0.3.1] — 2026-07-21
+
+### Changed
+
+- **Guerrilla remote deploy is now local-authoritative.** Every remote operation
+  round-trips state — `_push` (code + secrets + db → server) → exec → `_pull`
+  (db + logs → local) — so your machine owns the canonical SQLite database and a
+  wiped/cleaned VPS self-heals on the next run instead of losing the watchlist,
+  posting history, and circuit-breaker memory.
+- **Single-command manual runner** `scripts/guerrilla` — `scripts/guerrilla`
+  (defaults to `tick`), `preview`, `posted`, `track`, `report`, `resume`, `deploy`,
+  `shell`; built-in `--help`. Wraps the sync-round-trip Makefile so running the bot
+  by hand is one clear command.
+- Scheduling guidance moved from a server-resident cron (which would fight the push)
+  to driving the Makefile targets locally. `guerrilla.mk` targets (`tick`/`track`/
+  `report`/`resume`/`preview`/`posted`/`deploy`) now each wrap `_push … exec … _pull`.
+
 ## [0.3.0] — 2026-07-21
 
 ### Added
